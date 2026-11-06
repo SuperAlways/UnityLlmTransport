@@ -17,6 +17,7 @@
 - 每个实验记录环境、输入、结果、错误、证据路径。
 - 所有结论以实测为准；未验证项必须写“未验证”。
 - 不使用 .NET 6+ 专有 API 到 `netstandard2.1` 生产代码；spike 测试工程可用 `net10.0`。
+- Unity 版本轴：**2021.3.45f1**、**6000.3.28f1（6.3 LTS）**、**6000.6.8f1（6.6）**；同一资产三版本各跑，不写版本分支。
 - 每个任务结束提交；提交信息按任务给定。
 
 ---
@@ -45,6 +46,19 @@ printf '# Phase 0 SDD progress\n\n- Task 0: in progress\n' > .superpowers/sdd/pr
 git add .superpowers/sdd/progress.md
 git commit -m "chore: start phase0 spike"
 ```
+
+- [ ] **Step 0.3: 安装 Unity 版本轴（人工/长下载）**
+
+```bash
+HUB="C:\Program Files\WindowsApps\UnityTechnologies.UnityHub_3.22.5.65535_x64__2vrhnee42bhxm\app\Unity Hub.exe"
+"$HUB" -- --headless install-path -s "D:\Unity\Hub\Editor"
+"$HUB" -- --headless install --version 2021.3.45f1 --changeset 0da89fac8e79 --module windows-il2cpp
+"$HUB" -- --headless install --version 6000.3.28f1 --changeset 8f082d2fe476 --module windows-il2cpp
+"$HUB" -- --headless install --version 6000.6.8f1 --changeset 237b6593792b --module windows-il2cpp
+```
+
+Expected: `D:\Unity\Hub\Editor` 下出现三个版本目录；Unity Hub 已登录并激活 Personal 许可证。
+> 许可证需要用户账号；agent 不能代替登录。
 
 ---
 
@@ -334,16 +348,17 @@ public sealed class UwrSpike : MonoBehaviour
 
 - [ ] **Step 3.3: Unity 手动执行**
 
-1. Unity Hub 新建 2021.3 3D 项目到 `spikes/UnityUwrSpike`；
+1. Unity Hub 新建 3D 项目（分别用 **2021.3.45f1 / 6000.3.28f1 / 6000.6.8f1**）到 `spikes/UnityUwrSpike`；
 2. 复制 `Assets/Scripts/*.cs`；
 3. 新建场景，创建空 GameObject，挂 `UwrSpike`；
 4. 启动 Task 2 服务，Play；
 5. 记录 Console：回调次数、首块时间、总时长；
 6. 运行中调用 `AbortNow()`，继续观察 2 秒；
 7. 把 URL 改成错误端口，记录 `result`/`code`/`error`；
-8. 把 URL 改成 `/sse-error`，记录错误体是否到达 handler。
+8. 把 URL 改成 `/sse-error`，记录错误体是否到达 handler；
+9. **三个版本各跑一遍**，结果按版本记录（同一资产，不写版本分支）。
 
-Expected:
+Expected（每个版本）:
 - `callbacks > 1` 且首块时间明显小于总时长；
 - Abort 后 2 秒内无新增有效 chunk（或记录残留数）；
 - 错误端口：`result=ConnectionError`、`code=0`、`error` 非空；
@@ -415,7 +430,8 @@ dotnet run --project spikes/ProxyTlsSpike
 
 - UWR：系统代理开/关，本地/远程，正常/自签证书；显式代理无 API，记录“不可用”；
 - ClientWebSocket：本地 ws、远程 wss、系统代理；
-- 每格记录：成功/失败、`result`/`responseCode`/异常、耗时。
+- 每格记录：成功/失败、`result`/`responseCode`/异常、耗时；
+- **2021.3.45f1 / 6000.3.28f1 / 6000.6.8f1 各跑一遍**，按版本记录。
 
 - [ ] **Step 4.4: 写矩阵并提交**
 
@@ -497,9 +513,10 @@ public sealed class WsSpike : MonoBehaviour
 - 远程 wss：公共 echo 或自建自签 wss；
 - 系统代理；
 - Close/Abort；
-- IL2CPP。
+- IL2CPP；
+- **2021.3.45f1 / 6000.3.28f1 / 6000.6.8f1 各跑一遍**，按版本记录。
 
-Expected：本地 ws 成功；远程 wss 成功/失败原因明确（TLS/代理/握手/超时）；本地与远程分开记录。
+Expected：本地 ws 成功；远程 wss 成功/失败原因明确（TLS/代理/握手/超时）；本地与远程、三个版本分开记录。
 
 - [ ] **Step 5.4: 写矩阵并提交**
 
@@ -638,11 +655,11 @@ git commit -m "spike: channel read stream bridge"
 
 - [ ] **Step 7.2: 构建**
 
-Unity 2021.3：File → Build Settings → Windows / IL2CPP → Build；运行 Build 产物。
+对 **2021.3.45f1 / 6000.3.28f1 / 6000.6.8f1** 分别在 File → Build Settings → Windows / IL2CPP → Build；运行 Build 产物。
 
 - [ ] **Step 7.3: 运行同样实验**
 
-Expected：`ReceiveData` 被调用；Abort 生效；无缺失回调。若失败，记录错误并降级为“仅 Mono”。
+Expected（每个版本）：`ReceiveData` 被调用；Abort 生效；无缺失回调。若某版本失败，记录错误并降级为“该版本仅 Mono”。
 
 - [ ] **Step 7.4: 记录并提交**
 
@@ -673,15 +690,22 @@ git commit -m "spike: IL2CPP handler preservation"
 - WebSocket：本地 ws / 远程 wss / IL2CPP / WebGL 支持等级
 - gzip：自动解压/需解压
 - IL2CPP：通过/仅 Mono
+- 版本差异：2021.3.45f1 / 6000.3.28f1 / 6000.6.8f1 各自结果
 
 ## 证据
-| 实验 | 结论 | 证据 |
-|---|---|---|
-| S0-1 | ... | docs/spike/sse-compile.md |
-| ... | ... | ... |
+| 实验 | 版本 | 结论 | 证据 |
+|---|---|---|---|
+| S0-1 | 2021.3.45f1 | 编译/测试结果 | docs/spike/sse-compile.md |
+| S0-2 | 三个版本分别填 | 流式/Abort/gzip/错误 | docs/spike/uwr-streaming.md |
+| S0-3 | 三个版本分别填 | 代理/TLS | docs/spike/proxy-tls-matrix.md |
+| S0-4 | 三个版本分别填 | 本地 ws / 远程 wss | docs/spike/websocket-matrix.md |
+| S0-5 | 三个版本分别填 | IL2CPP | docs/spike/il2cpp.md |
+| S0-6 | 2021.3.45f1 | ChannelReadStream | docs/spike/channel-stream.md |
 
 ## 对 Phase 1/2 的修订
-- ...
+- 将实测出的版本差异写入能力矩阵，不写入 PiUnityAgent.Ai。
+- 2021.3.45f1 的 UWR/超时/代理结论作为主路径基线。
+- 6.3.28f1 / 6.6.8f1 的差异只影响适配器实现或能力声明。
 ```
 
 - [ ] **Step 8.2: 提交**

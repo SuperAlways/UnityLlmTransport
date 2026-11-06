@@ -106,6 +106,19 @@
 - 包含身份帧、有界发送队列、重连锁存/超时恢复、收信循环、Close 处理；
 - **结论**：桌面 Unity Mono + netstandard2.1 下本地 `ws://` 可用；但 `wss://`（TLS/证书）、代理、IL2CPP、WebGL 均未验证，不能直接宣称“WebSocket 全平台支持”。
 
+### 3.11 Unity 版本差异（2021.3 / 6.3 / 6.6）
+
+| 能力 | 2021.3.45f1 | 6000.3.28f1（6.3 LTS） | 6000.6.8f1（6.6） | 处理 |
+|---|---|---|---|---|
+| HTTP 版本 | HTTP/1.1 | UWR 可能 HTTP/2 | 可能 HTTP/2 | 能力声明，不做版本分支 |
+| TLS/网络栈 | 较旧 | 更新 | 更新 | 错误归一为 `Tls`/`Proxy` |
+| UWR 流式 | DownloadHandlerScript | 同左 | 同左 | 同一 adapter |
+| WebSocket | ClientWebSocket | 同左 | 同左 | 能力不足报 `Unsupported` |
+| IL2CPP | link.xml | 需验证 | 需验证 | 同一 link.xml |
+| C#/运行时 | C#9/netstandard2.1 | 更新 | 更新 | 仍按 C#9 编译 |
+
+> 版本差异只能出现在 Unity 适配层；Abstractions/PiUnityAgent.Ai 不得出现 `UNITY_*` 或 `Application.unityVersion`。
+
 ---
 
 ## 4. AI mod 特有问题
