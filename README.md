@@ -126,6 +126,14 @@ UnityLlmTransport/
     00-核心需求.md
     01-Unity通讯问题陈述.md
     02-调研问题.md
+    03-pi通讯需求矩阵.md
+    04-Unity-AI-mod通讯问题清单.md
+    05-版本与兼容基线.md
+    06-参考项目复盘-Yaolao-WorldTalk-江湖有灵.md
+    07-参考项目阅读与评估方法.md
+    08-阅读笔记/
+    09-参考项目评估矩阵.md
+    10-架构设计.md
 ```
 
 `src/`、`tests/` 在设计确认后再建。
