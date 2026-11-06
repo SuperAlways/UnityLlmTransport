@@ -11,12 +11,13 @@
 ```
 阶段开工
   → 读上一阶段门禁/文档/参考结论
-  → 阶段 spec（设计变更时；用户 review）
-  → 阶段 plan（writing-plans；任务级 TDD）
-  → SDD：每任务 implementer → task reviewer → 修复/复审
-  → 阶段末 final review（whole phase）
+  → 阶段 spec：轻量调研协议（§2.1）→ spec → 自查 → 用户一次性 review
+  → 阶段 plan：Skill("superpowers:writing-plans")
+  → SDD：Skill("superpowers:subagent-driven-development")
+       每任务 implementer → task reviewer → 修复/复审
+  → 阶段末 final review：Skill("superpowers:requesting-code-review")
   → 门禁：构建/单测/实机矩阵
-  → 用户验收 → merge
+  → 用户验收 → Skill("superpowers:finishing-a-development-branch")
   → 更新 README/阶段文档/复盘
 ```
 
@@ -37,6 +38,66 @@ docs/13-阶段复盘-<phase>.md                            // 阶段末复盘
 - plan 必须包含：任务拆分（3–7 个）、每任务文件、TDD 步骤、命令、验收。
 - 每个任务由独立 implementer 执行；任务 reviewer 检查 spec 合规 + 代码质量。
 - 阶段末由强模型做 whole-phase review；通过后进入门禁。
+
+### 2.1 Spec 生成协议（轻量，不走重型 brainstorming）
+
+**原则**：spec 由 agent 基于证据生成；**不向用户做一问一答式 brainstorm**。用户只在最终 spec review 和真正的产品分叉上表态。
+
+**流程（强制）**
+
+1. **读输入**：
+   - `docs/00-核心需求.md`、`03-pi通讯需求矩阵.md`、`04-Unity-AI-mod通讯问题清单.md`、`09-参考项目评估矩阵.md`、`10-架构设计.md`、`11-开发阶段划分.md`；
+   - 对应阶段的 `docs/08-阅读笔记/*.md`；
+   - 只在需求不清时查 pi / pi.net 原版。
+2. **查参考实现**：用阅读笔记里的 file:line 证据；不复制无 LICENSE 代码。
+3. **直接写 spec**：按固定结构（见下），不逐步提问。
+4. **spec 自查**：placeholder / 内部矛盾 / 范围 / 歧义；就地修。
+5. **一次 review**：把 spec 路径给用户，只请用户确认或提修改；不做增量问答。
+6. **真正的分叉**：只有遇到“产品范围/不可逆取舍”才问；一次给 2–3 个选项 + 推荐，不串行追问。
+
+**Spec 固定结构**
+
+```markdown
+# <Phase> 设计 spec
+> 状态 / 阶段 / 输入 / 日期
+## 1. 背景与目标
+## 2. 范围与非目标
+## 3. 需求（Must/Should/May）
+## 4. 接口与数据流
+## 5. 行为（超时/取消/错误/认证/重试）
+## 6. 平台矩阵与能力
+## 7. 偏离与代价（pi / pi.net / 我们）
+## 8. 测试计划
+## 9. 验收标准
+## 10. 参考（file:line）
+```
+
+**Superpowers 调用路由**
+
+| 阶段 | 调用 | 说明 |
+|---|---|---|
+| Spec | 默认不调 brainstorming；仅“真分叉”时 `superpowers:brainstorming` | 避免过度问答 |
+| Plan | `superpowers:writing-plans` | 任务级 TDD、完整代码/命令/expected |
+| 执行 | `superpowers:subagent-driven-development` | 每任务 implementer + reviewer |
+| 任务审查 | SDD 内置 | spec 合规 + 代码质量 |
+| 阶段末审查 | `superpowers:requesting-code-review` | whole-phase diff |
+| 隔离 | `superpowers:using-git-worktrees`（需要时） | 代码改动隔离 |
+| 调试 | `superpowers:systematic-debugging`（出现未知故障时） | spike/blocker |
+| 完成前 | `superpowers:verification-before-completion` | 证据齐全再宣布完成 |
+| 合并 | `superpowers:finishing-a-development-branch` | 用户批准后 |
+
+**仍然需要用户拍板的**
+
+- 产品范围/不可逆取舍；
+- 最终 spec 的一次 review；
+- 合并 main 的批准。
+
+**不需要用户拍板的**
+
+- 接口微选择、文件布局、测试命名、模型路由、spike 细节；
+- agent 按需求/参考/架构直接给推荐并执行。
+
+**证据标准**：源码 file:line > 官方文档 > 实测 > 推测（推测必须标注）。
 
 ---
 

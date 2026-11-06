@@ -21,3 +21,6 @@ Thumbs.db
 
 # 参考仓库（不参与构建）
 refs/
+
+# Superpowers SDD 台账
+.superpowers/

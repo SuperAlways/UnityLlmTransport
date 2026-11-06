@@ -136,6 +136,10 @@ UnityLlmTransport/
     10-架构设计.md
     11-开发阶段划分.md
     12-开发执行模型-spec-plan-subagent.md
+    superpowers/
+      specs/2026-11-06-phase0-spike-design.md
+      plans/2026-11-06-phase0-spike.md
+    spike/
 ```
 
 `src/`、`tests/` 在设计确认后再建。
