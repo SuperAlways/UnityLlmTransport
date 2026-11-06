@@ -1,0 +1,20 @@
+# .NET
+bin/
+obj/
+*.user
+*.suo
+.vs/
+
+# Unity
+Library/
+Temp/
+Logs/
+Build/
+Builds/
+UserSettings/
+MemoryCaptures/
+Recordings/
+
+# OS
+.DS_Store
+Thumbs.db
