@@ -134,6 +134,8 @@ UnityLlmTransport/
     08-阅读笔记/
     09-参考项目评估矩阵.md
     10-架构设计.md
+    11-开发阶段划分.md
+    12-开发执行模型-spec-plan-subagent.md
 ```
 
 `src/`、`tests/` 在设计确认后再建。
