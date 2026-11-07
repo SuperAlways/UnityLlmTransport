@@ -265,7 +265,8 @@ UnityWebRequest(method, url)
 ### 5.2 超时映射
 
 - `ConnectTimeout` → `UnityWebRequest.timeout`（UWR 的整请求上限，单位秒；0=无限）；这是 UWR 能提供的最接近语义；
-- `FirstByteTimeout`/`IdleTimeout` → Phase 1 `TimeoutTransport` 看门狗（UWR 统一 `timeout=0`，除 ConnectTimeout 外不走引擎）；
+- `FirstByteTimeout` → **适配器在等待首字节（`StartAsync`）时强制**：从 `StartAsync` 启动计时，超时 → `Abort` + `TransportException(FirstByteTimeout)`（因为 `OpenAsync` 要等首字节才能交付会话，看门狗必须在适配器内）；
+- `IdleTimeout` → Phase 1 `TimeoutTransport`（Body 读间隔；适配器不重复实现）；
 - 偏差：UWR 没有“仅连接阶段”超时，`ConnectTimeout` 实际约束到响应结束；记录偏离表。
 
 ### 5.3 就绪与首字节
@@ -274,7 +275,7 @@ UnityWebRequest(method, url)
 
 1. `StreamingDownloadHandler` 首次 `ReceiveData`（首字节已入队）**且** `request.responseCode != 0`；或
 2. 请求在首字节前结束/失败；或
-3. 调用方取消，或 `ConnectTimeout`（UWR `timeout`）触发。
+3. 调用方取消、`ConnectTimeout`（UWR `timeout`）触发，或 `FirstByteTimeout` 到期（适配器 Abort）。
 
 `UwrResponseSnapshot` 在就绪时快照 `result`、`responseCode`、`GetResponseHeaders()`、`error`（主线程内），随后 `Classify` 决定：
 
@@ -381,7 +382,7 @@ Phase 2 的 Unity 侧源码按 **Assembly-CSharp** 编译（无 asmdef），`lin
 | U1 | 真实 `UnityWebRequestTransport` + `SseParser`，`/sse` | ≥2 次回调；首块时间 < 总时长；逐条产出 |
 | U2 | 首字节快照 | `ReceiveData` 首回时 `responseCode != 0` 且 headers 含 `content-type` |
 | U3 | 取消（流中途） | `ct.Cancel()` 后 ≤1 帧 `Abort`；队列以 `Cancelled` 终止；1s 内无新增回调 |
-| U4 | 首字节/空闲超时 | 经 `TimeoutTransport` 触发 `FirstByteTimeout`/`IdleTimeout` 并 Abort |
+| U4 | 首字节/空闲超时 | `FirstByteTimeout` 由适配器在等待首字节时触发；`IdleTimeout` 经 `TimeoutTransport` 触发；均 Abort |
 | U5 | 溢出 | `MaxBufferedBytes` 调小 + `/sse-big` 快速大包 → `Overflow`，无卡死 |
 | U6 | 500 | `/sse-error` 返回会话，Body 可读错误体 |
 | U7 | 连接/代理/TLS | 错误端口（系统代理）→ 502 会话；自签默认 → `Tls`；`ValidateCertificate=false` → 成功；`Explicit` → `Unsupported` |
@@ -390,7 +391,7 @@ Phase 2 的 Unity 侧源码按 **Assembly-CSharp** 编译（无 asmdef），`lin
 | U10 | 重定向 | `RedirectPolicy.Error` 对重定向端点报错；`Follow` 成功 |
 | U11 | Abort 残留 | Abort 后 1s 窗口回调计数不再增长 |
 
-> `SseTestServer` 需新增 `/sse-big`（快速大块，供 U5）与 `/redirect`（302 → `/sse`，供 U10）两个端点；其余复用 Phase 0 服务。
+> `SseTestServer` 需新增 `/sse-slow`（600ms 首包，供 U4 首字节超时）、`/sse-idle`（首包立即、后续 400ms，供 U4 空闲超时）、`/sse-big`（快速大块，供 U5）与 `/redirect`（302 → `/sse`，供 U10）；其余复用 Phase 0 服务。
 
 ### 7.3 IL2CPP 冒烟
 
