@@ -35,6 +35,32 @@ namespace UnityLlmTransport.Tests
             Assert.Equal(TransportErrorKind.Protocol, error.Kind);
         }
 
+        // 实测（.NET BCL）：AddSubProtocol("bad proto")（空格不是合法 RFC token 字符）与
+        // SetRequestHeader(name, "a\r\nb")（值含控制字符）都在 ConfigureSocket 阶段同步抛
+        // 裸 ArgumentException —— ConnectAsync 必须归一 Protocol，不许逃逸原生异常（spec §5.1/§5.5）。
+        [Fact]
+        public async Task Invalid_SubProtocol_Is_Protocol()
+        {
+            var transport = new ClientWebSocketTransport();
+            var error = await Assert.ThrowsAsync<TransportException>(() => transport.ConnectAsync(
+                Request(),
+                new WebSocketOptions { SubProtocol = "bad proto" },
+                CancellationToken.None));
+            Assert.Equal(TransportErrorKind.Protocol, error.Kind);
+        }
+
+        [Fact]
+        public async Task Invalid_Header_Is_Protocol()
+        {
+            var transport = new ClientWebSocketTransport();
+            var headers = new TransportHeaders { ["X-Bad"] = "a\r\nb" };
+            var error = await Assert.ThrowsAsync<TransportException>(() => transport.ConnectAsync(
+                new WebSocketRequest(_fixture.Server.HttpBase + "/ws/echo", headers),
+                new WebSocketOptions(),
+                CancellationToken.None));
+            Assert.Equal(TransportErrorKind.Protocol, error.Kind);
+        }
+
         [Fact]
         public async Task Explicit_Proxy_Is_Unsupported()
         {

@@ -57,10 +57,17 @@ namespace UnityLlmTransport
             {
                 ConfigureSocket(socket.Options, request, options);
             }
-            catch
+            catch (TransportException)
             {
                 socket.Dispose();
                 throw;
+            }
+            catch (Exception ex)
+            {
+                // BCL 的 AddSubProtocol/SetRequestHeader 对非法 token/控制字符同步抛裸 ArgumentException；
+                // 按 spec §5.1/§5.5 归一 TransportException（非法请求配置 → Protocol），不许逃逸原生异常。
+                socket.Dispose();
+                throw WebSocketErrorClassifier.ClassifyConnect(ex, cancellationToken.IsCancellationRequested, false);
             }
 
             CancellationTokenSource? timeoutCts = null;

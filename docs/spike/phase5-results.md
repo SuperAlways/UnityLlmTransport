@@ -44,6 +44,7 @@
   - WS→SSE 回退 / 自动重连 / `WebSocketCached` 装饰器：属消费方/后续阶段；
   - 系统代理关闭对照：未测（本地判据不依赖代理；远程 wss 依赖外网）；
   - 显式代理：`ClientWebSocket` 仅支持系统代理，`WebSocketOptions.Proxy != System` 归一 `Unsupported`（Task 1 语义，本阶段未变）。
+  - **Unity accept-all wss / 客户端证书未实机验证**：自签 wss 的 `ValidateCertificate=false` 与客户端证书路径目前只在 dotnet 覆盖（`SelfSigned_AcceptAll_Connects`）；Unity harness 用 plain ws + Postman 公网 wss，未跑本地自签 wss → Phase 6/后续补一格。
 
 ## 原始结果行（证据，逐字）
 
@@ -79,4 +80,4 @@ PHASE5 W6_error_port|OK|kind=Connect
 > `W1_text|FAIL|InvalidOperationException: Operation is not valid due to the current state of the object.`（迭代器 DisposeAsync 续跑触发 Unity 2022.3 IL2CPP `ManualResetValueTaskSourceCore` 缺陷）；
 > `W2_utf8|FAIL|TransportException kind=Connect`、`W3_close|FAIL|...`、`W4_abort|FAIL|...`（泄漏会话卡死单线程服务的连锁，`Unable to connect to the remote server` / `Connection reset by peer`）；
 > `W5_remote_wss|OK|type=Text|payload=hello`、`W6_error_port|OK|kind=Connect`（不经本地服务，未受污染）。
-> 其余 6 组（3 版本 × Mono/IL2CPP）首轮即全绿，修复后复测维持全绿。
+> 其余 7 组（2022.3 Mono + 3 版本 × Mono/IL2CPP）首轮即全绿，修复后复测维持全绿。

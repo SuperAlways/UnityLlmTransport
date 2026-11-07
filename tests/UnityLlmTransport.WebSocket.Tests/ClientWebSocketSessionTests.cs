@@ -191,5 +191,39 @@ namespace UnityLlmTransport.Tests
                 error.Kind == TransportErrorKind.Aborted);
             await session.DisposeAsync();
         }
+
+        // 守卫抛点实测：session 级单枚举守卫（_receiveStarted）在第二个枚举器的首个 MoveNextAsync 上抛，
+        // 不在 GetAsyncEnumerator 上 —— 两条路径都被 Assert.ThrowsAsync 的 async lambda 覆盖。
+        [Fact]
+        public async Task Concurrent_Receive_Second_Enumeration_Is_Protocol()
+        {
+            var session = await Connect("/ws/close");
+            var first = session.ReceiveAsync(CancellationToken.None).GetAsyncEnumerator();
+            Assert.True(await first.MoveNextAsync()); // consumes the Close frame
+
+            var second = session.ReceiveAsync(CancellationToken.None);
+            var error = await Assert.ThrowsAsync<TransportException>(async () =>
+            {
+                await second.GetAsyncEnumerator().MoveNextAsync();
+            });
+            Assert.Equal(TransportErrorKind.Protocol, error.Kind);
+            await session.DisposeAsync();
+        }
+
+        [Fact]
+        public async Task Concurrent_Sends_Are_Serialized()
+        {
+            var session = await Connect("/ws/echo");
+            // 发送由 _sendLock 串行化：并发 Send 都要完整成功，不允许 BCL 的
+            // "already one outstanding send" InvalidOperationException 逃出来。
+            var t1 = session.SendAsync(
+                new WebSocketMessage(WebSocketMessageType.Text, Encoding.UTF8.GetBytes("a"), true),
+                CancellationToken.None);
+            var t2 = session.SendAsync(
+                new WebSocketMessage(WebSocketMessageType.Text, Encoding.UTF8.GetBytes("b"), true),
+                CancellationToken.None);
+            await Task.WhenAll(t1, t2);
+            await session.DisposeAsync();
+        }
     }
 }
