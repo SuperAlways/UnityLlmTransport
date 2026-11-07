@@ -99,6 +99,8 @@ namespace UnityLlmTransport.Tests
                         await socket.CloseAsync(WebSocketCloseStatus.NormalClosure, "bye", CancellationToken.None);
                         break;
                     case "/ws/drop":
+                        // 先让客户端完成 101 握手读取，再掐断连接——否则掐断会竞速握手本身。
+                        await Task.Delay(100);
                         socket.Abort();
                         break;
                     case "/ws/info":
