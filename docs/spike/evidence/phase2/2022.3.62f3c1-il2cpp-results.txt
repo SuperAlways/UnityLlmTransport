@@ -1,0 +1,18 @@
+PHASE2 unity_version=2022.3.62f3c1
+PHASE2 main_thread=1
+PHASE2 U1_stream|OK|status=200|open_ms=99|items=6|first_ms=99|total_ms=650|data={"choices":[{"delta":{"content":"你"}}]}{"choices":[{"delta":{"content":"好"}}]}{"choices":[{"delta":{"content":"，"}}]}{"choices":[{"delta":{"content":"世"}}]}{"choices":[{"delta":{"content":"界"}}]}[DONE]
+PHASE2 U2_snapshot|OK|status=200|content_type=True
+PHASE2 U3_cancel|OK|cancel_error=TransportException kind=Cancelled code=- msg=Response aborted (Cancelled).
+PHASE2 U4_first_byte_timeout|OK|kind=FirstByteTimeout
+PHASE2 U4_idle_timeout|OK|kind=IdleTimeout
+PHASE2 U5_overflow|OK|kind=Overflow|msg=Response exceeded ChunkQueue capacity of 65536 bytes.
+PHASE2 U6_error_body|OK|status=500|body={"error":"boom"}
+PHASE2 U7_tls_accept|OK|status=200
+PHASE2 U7_tls_default|OK|kind=Tls
+PHASE2 U7_explicit_proxy|OK|kind=Unsupported
+PHASE2 U8_gzip|OK|items=6|first_ms=100|data={"choices":[{"delta":{"content":"你"}}]}{"choices":[{"delta":{"content":"好"}}]}{"choices":[{"delta":{"content":"，"}}]}{"choices":[{"delta":{"content":"世"}}]}{"choices":[{"delta":{"content":"界"}}]}[DONE]
+PHASE2 U9_threads|OK|main=1|parse=9|observer=7|chunks=8
+PHASE2 U10_redirect_error|OK|kind=Protocol
+PHASE2 U10_redirect_follow|OK|status=200|items=6
+PHASE2 U11_abort_residual|OK|chunks_at_abort=1|after_1s=1
+PHASE2 
