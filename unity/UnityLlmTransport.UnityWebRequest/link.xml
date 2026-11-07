@@ -1,0 +1,6 @@
+<linker>
+  <assembly fullname="Assembly-CSharp">
+    <type fullname="UnityLlmTransport.StreamingDownloadHandler" preserve="all" />
+    <type fullname="UnityLlmTransport.UnityCoroutineHost" preserve="all" />
+  </assembly>
+</linker>
