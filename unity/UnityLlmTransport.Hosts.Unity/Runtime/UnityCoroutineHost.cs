@@ -90,6 +90,50 @@ namespace UnityLlmTransport
             return completion.Task;
         }
 
+        public Task<UwrResponseSnapshot> WaitForCompletionAsync(UnityWebRequest request)
+        {
+            if (request == null)
+            {
+                throw new ArgumentNullException(nameof(request));
+            }
+            var completion = new TaskCompletionSource<UwrResponseSnapshot>(TaskCreationOptions.RunContinuationsAsynchronously);
+            _dispatcher.Post(() => StartCoroutine(WaitForCompletion(request, completion)));
+            return completion.Task;
+        }
+
+        private IEnumerator WaitForCompletion(UnityWebRequest request, TaskCompletionSource<UwrResponseSnapshot> completion)
+        {
+            while (true)
+            {
+                bool isDone;
+                try
+                {
+                    isDone = request.isDone;
+                }
+                catch (Exception ex)
+                {
+                    completion.TrySetResult(new UwrResponseSnapshot(UwrCompletion.Aborted, 0, new TransportHeaders(), ex.Message));
+                    yield break;
+                }
+                if (isDone)
+                {
+                    break;
+                }
+                yield return null;
+            }
+
+            UwrResponseSnapshot snapshot;
+            try
+            {
+                snapshot = BuildSnapshot(request, false);
+            }
+            catch (Exception ex)
+            {
+                snapshot = new UwrResponseSnapshot(UwrCompletion.Aborted, 0, new TransportHeaders(), ex.Message);
+            }
+            completion.TrySetResult(snapshot);
+        }
+
         private IEnumerator RunRequest(
             UnityWebRequest request,
             CancellationToken ct,

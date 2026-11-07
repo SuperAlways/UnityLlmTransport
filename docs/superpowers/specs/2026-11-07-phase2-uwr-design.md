@@ -229,6 +229,9 @@ public interface IUnityWebRequestRunner
     /// <summary>任意线程调用；在主线程启动 UWR，完成条件见 §5.3（首字节/提前失败）。</summary>
     Task<UwrResponseSnapshot> StartAsync(UnityWebRequest request, CancellationToken ct);
 
+    /// <summary>任意线程调用；请求真正结束时完成快照（会话返回后继续观察用）。</summary>
+    Task<UwrResponseSnapshot> WaitForCompletionAsync(UnityWebRequest request);
+
     /// <summary>fire-and-forget 主线程投递（Abort/Dispose 用）。</summary>
     void Post(Action action);
 }
@@ -298,6 +301,7 @@ UnityWebRequest(method, url)
 - `ReceiveData` 在主线程：仅 `ChunkQueue.TryWrite` 拷贝字节，不做 UTF-8/SSE/JSON；
 - 有界容量 `MaxBufferedBytes`（默认 4 MiB）：`TryWrite` 失败 → 队列以 `Overflow` 终止，`ReceiveData` 返回 `false`（引擎 abort），会话读取抛 `TransportException(Overflow)`；
 - `CompleteContent` → `queue.Complete()`；失败/取消 → `queue.Abort(error)`；
+- 会话返回后由 `WaitForCompletionAsync` 观察请求终止；队列未终止时成功→Complete、失败→Abort(classifier/Protocol)，防止读者悬挂。
 - Abort 后残留回调由 `MarkAborted` 状态位丢弃（不产生二次错误）。
 
 ### 5.5 取消
@@ -305,6 +309,7 @@ UnityWebRequest(method, url)
 - `OpenAsync` 收到的 `CancellationToken` 注册到会话生命周期：取消 → `runner.Post(request.Abort)`（主线程）；
 - 等待首字节期间取消 → 立即 `Abort`，`StartAsync` 以取消完成，分类为 `Cancelled`；
 - 会话返回后取消 → 队列以 `Cancelled/Aborted` 终止，`Body.ReadAsync` 抛 `TransportException`，删除注册；
+- 会话返回后由 `WaitForCompletionAsync` 观察请求终止；队列未终止时成功→Complete、失败→Abort(classifier/Protocol)，防止读者悬挂。
 - `DisposeAsync` = Abort + 主线程 `request.Dispose()` + 队列终止；不得泄漏注册。
 
 ### 5.6 错误分类（纯函数）

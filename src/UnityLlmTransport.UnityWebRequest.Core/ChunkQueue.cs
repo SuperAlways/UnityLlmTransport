@@ -30,6 +30,11 @@ namespace UnityLlmTransport
             get { lock (_gate) { return _bufferedBytes; } }
         }
 
+        public bool IsTerminated
+        {
+            get { lock (_gate) { return _completed; } }
+        }
+
         public Exception? CompletionError
         {
             get { lock (_gate) { return _completionError; } }

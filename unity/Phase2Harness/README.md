@@ -22,5 +22,5 @@ D:/UnitySpikes/Builds/Phase2/<unityVersion>/mono/Phase2.exe \
   -logFile D:/UnitySpikes/phase2-<ver>-mono-player.log
 ```
 
-结果文件：`%LOCALAPPDATA%Low\DefaultCompany\Phase2\phase2-results.txt`；日志里 `PHASE2 <name>|OK|...` 为判据。
+结果文件：`%LOCALAPPDATA%Low\DefaultCompany\<工程名>\phase2-results.txt`（以日志 `PHASE2_RESULTS_PATH` 为准）；日志里 `PHASE2 <name>|OK|...` 为判据。
 `link.xml` 目标程序集为 `Assembly-CSharp`；若把源码放入自定义 asmdef，必须同步改 `fullname`。

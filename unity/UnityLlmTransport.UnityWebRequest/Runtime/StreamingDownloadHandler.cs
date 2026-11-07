@@ -9,17 +9,22 @@ namespace UnityLlmTransport
         private volatile bool _aborted;
 
         public StreamingDownloadHandler(ChunkQueue queue, int downloadBufferSize)
-            : base(new byte[downloadBufferSize])
+            : base(AllocateBuffer(downloadBufferSize))
         {
             if (queue == null)
             {
                 throw new ArgumentNullException(nameof(queue));
             }
+            _queue = queue;
+        }
+
+        private static byte[] AllocateBuffer(int downloadBufferSize)
+        {
             if (downloadBufferSize <= 0)
             {
                 throw new ArgumentOutOfRangeException(nameof(downloadBufferSize));
             }
-            _queue = queue;
+            return new byte[downloadBufferSize];
         }
 
         public bool FirstDataReceived { get; private set; }

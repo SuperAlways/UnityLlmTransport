@@ -45,7 +45,11 @@ namespace UnityLlmTransport
                     uwr, options, cancellationToken, queue).ConfigureAwait(false);
 
                 TransportException failure;
-                if (plan.RedirectLimit == 0 && snapshot.StatusCode >= 300 && snapshot.StatusCode < 400)
+                if (cancellationToken.IsCancellationRequested || snapshot.Completion == UwrCompletion.Aborted)
+                {
+                    failure = UwrResponseClassifier.Classify(snapshot, true);
+                }
+                else if (plan.RedirectLimit == 0 && snapshot.StatusCode >= 300 && snapshot.StatusCode < 400)
                 {
                     failure = new TransportException(
                         TransportErrorKind.Protocol,
@@ -74,7 +78,7 @@ namespace UnityLlmTransport
                     throw failure;
                 }
 
-                return new UnityWebRequestSession(
+                var session = new UnityWebRequestSession(
                     uwr,
                     built.Handler,
                     queue,
@@ -83,6 +87,8 @@ namespace UnityLlmTransport
                     options.Decompress,
                     _runner,
                     cancellationToken);
+                _ = WatchCompletionAsync(uwr, built.Handler, queue);
+                return session;
             }
             catch
             {
@@ -162,6 +168,45 @@ namespace UnityLlmTransport
                 linkedCts?.Dispose();
                 timeoutCts?.Dispose();
             }
+        }
+
+        private async Task WatchCompletionAsync(UnityWebRequest request, StreamingDownloadHandler handler, ChunkQueue queue)
+        {
+            UwrResponseSnapshot snapshot;
+            try
+            {
+                snapshot = await _runner.WaitForCompletionAsync(request).ConfigureAwait(false);
+            }
+            catch (Exception)
+            {
+                return;
+            }
+
+            if (queue.IsTerminated)
+            {
+                return;
+            }
+
+            if (snapshot.Completion == UwrCompletion.Success)
+            {
+                queue.Complete();
+                return;
+            }
+
+            var error = UwrResponseClassifier.Classify(snapshot, snapshot.Completion == UwrCompletion.Aborted);
+            if (error == null)
+            {
+                error = new TransportException(
+                    TransportErrorKind.Protocol,
+                    "Stream ended before completion.",
+                    null,
+                    snapshot.StatusCode,
+                    snapshot.Headers,
+                    snapshot.Error,
+                    false);
+            }
+            handler.MarkAborted(error.Kind);
+            queue.Abort(error);
         }
 
         private sealed record BuiltRequest(UnityWebRequest Request, StreamingDownloadHandler Handler);

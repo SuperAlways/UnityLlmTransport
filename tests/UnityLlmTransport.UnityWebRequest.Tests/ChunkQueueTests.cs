@@ -55,6 +55,20 @@ namespace UnityLlmTransport.Tests
         }
 
         [Fact]
+        public void IsTerminated_Tracks_Completion_And_Overflow()
+        {
+            var queue = new ChunkQueue(4);
+            Assert.False(queue.IsTerminated);
+            queue.Complete();
+            Assert.True(queue.IsTerminated);
+
+            var overflowed = new ChunkQueue(2);
+            overflowed.TryWrite(new byte[2], 2);
+            Assert.False(overflowed.TryWrite(new byte[1], 1));
+            Assert.True(overflowed.IsTerminated);
+        }
+
+        [Fact]
         public async Task Complete_Allows_Draining_Then_Wait_Returns_False()
         {
             var queue = new ChunkQueue(1024);
