@@ -15,5 +15,6 @@
     <ProjectReference Include="..\..\src\UnityLlmTransport.Abstractions\UnityLlmTransport.Abstractions.csproj" />
     <ProjectReference Include="..\..\src\UnityLlmTransport.Sse\UnityLlmTransport.Sse.csproj" />
     <ProjectReference Include="..\..\src\UnityLlmTransport.HttpClient\UnityLlmTransport.HttpClient.csproj" />
+    <ProjectReference Include="..\Phase3TestSupport\Phase3TestSupport.csproj" />
   </ItemGroup>
 </Project>

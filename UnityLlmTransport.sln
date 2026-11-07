@@ -21,6 +21,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UnityLlmTransport.HttpClien
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UnityLlmTransport.HttpClient.Tests", "tests\UnityLlmTransport.HttpClient.Tests\UnityLlmTransport.HttpClient.Tests.csproj", "{5CC6D17D-3519-43C4-84C4-948895AAC2B8}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Phase3TestSupport", "tests\Phase3TestSupport\Phase3TestSupport.csproj", "{5ABFC73B-7046-4759-8192-BFE55BE304A9}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -115,6 +117,18 @@ Global
 		{5CC6D17D-3519-43C4-84C4-948895AAC2B8}.Release|x64.Build.0 = Release|Any CPU
 		{5CC6D17D-3519-43C4-84C4-948895AAC2B8}.Release|x86.ActiveCfg = Release|Any CPU
 		{5CC6D17D-3519-43C4-84C4-948895AAC2B8}.Release|x86.Build.0 = Release|Any CPU
+		{5ABFC73B-7046-4759-8192-BFE55BE304A9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5ABFC73B-7046-4759-8192-BFE55BE304A9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5ABFC73B-7046-4759-8192-BFE55BE304A9}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{5ABFC73B-7046-4759-8192-BFE55BE304A9}.Debug|x64.Build.0 = Debug|Any CPU
+		{5ABFC73B-7046-4759-8192-BFE55BE304A9}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{5ABFC73B-7046-4759-8192-BFE55BE304A9}.Debug|x86.Build.0 = Debug|Any CPU
+		{5ABFC73B-7046-4759-8192-BFE55BE304A9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5ABFC73B-7046-4759-8192-BFE55BE304A9}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5ABFC73B-7046-4759-8192-BFE55BE304A9}.Release|x64.ActiveCfg = Release|Any CPU
+		{5ABFC73B-7046-4759-8192-BFE55BE304A9}.Release|x64.Build.0 = Release|Any CPU
+		{5ABFC73B-7046-4759-8192-BFE55BE304A9}.Release|x86.ActiveCfg = Release|Any CPU
+		{5ABFC73B-7046-4759-8192-BFE55BE304A9}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -127,5 +141,6 @@ Global
 		{E0B8723B-C906-4C78-9ED4-67095A191B91} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
 		{88261D13-4861-415C-90CD-9A02D6E600CA} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 		{5CC6D17D-3519-43C4-84C4-948895AAC2B8} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
+		{5ABFC73B-7046-4759-8192-BFE55BE304A9} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
 	EndGlobalSection
 EndGlobal
