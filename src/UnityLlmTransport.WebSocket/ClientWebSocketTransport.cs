@@ -1,0 +1,163 @@
+using System;
+using System.Net.WebSockets;
+using System.Threading;
+using System.Threading.Tasks;
+
+namespace UnityLlmTransport
+{
+    public sealed class ClientWebSocketTransport : IWebSocketTransport
+    {
+        private static readonly TransportCapabilities DefaultCapabilities =
+            TransportCapabilities.WebSocket |
+            TransportCapabilities.WebSocketOverTls |
+            TransportCapabilities.SystemProxy |
+            TransportCapabilities.TlsCertificateHandler;
+
+        public TransportCapabilities Capabilities => DefaultCapabilities;
+
+        public async Task<IWebSocketSession> ConnectAsync(
+            WebSocketRequest request,
+            WebSocketOptions options,
+            CancellationToken cancellationToken)
+        {
+            if (request == null)
+            {
+                throw new ArgumentNullException(nameof(request));
+            }
+            if (options == null)
+            {
+                throw new ArgumentNullException(nameof(options));
+            }
+
+            Uri uri;
+            try
+            {
+                uri = new Uri(request.Url, UriKind.Absolute);
+            }
+            catch (Exception ex)
+            {
+                throw new TransportException(
+                    TransportErrorKind.Protocol,
+                    "Invalid WebSocket URL: " + request.Url,
+                    ex,
+                    null,
+                    null,
+                    null,
+                    false);
+            }
+            if (uri.Scheme != "ws" && uri.Scheme != "wss")
+            {
+                throw new TransportException(
+                    TransportErrorKind.Protocol,
+                    "WebSocket URL must use ws:// or wss://; got: " + uri.Scheme);
+            }
+
+            var socket = new ClientWebSocket();
+            try
+            {
+                ConfigureSocket(socket.Options, request, options);
+            }
+            catch
+            {
+                socket.Dispose();
+                throw;
+            }
+
+            CancellationTokenSource? timeoutCts = null;
+            CancellationTokenSource? linkedCts = null;
+            try
+            {
+                CancellationToken token = cancellationToken;
+                if (options.ConnectTimeout.HasValue && options.ConnectTimeout.Value > TimeSpan.Zero)
+                {
+                    timeoutCts = new CancellationTokenSource(options.ConnectTimeout.Value);
+                    linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutCts.Token);
+                    token = linkedCts.Token;
+                }
+
+                try
+                {
+                    await socket.ConnectAsync(uri, token).ConfigureAwait(false);
+                }
+                catch (Exception ex)
+                {
+                    bool callerCancelled = cancellationToken.IsCancellationRequested;
+                    bool connectTimeout = timeoutCts != null &&
+                                          timeoutCts.IsCancellationRequested &&
+                                          !callerCancelled;
+                    socket.Dispose();
+                    throw WebSocketErrorClassifier.ClassifyConnect(ex, callerCancelled, connectTimeout);
+                }
+
+                return new ClientWebSocketSession(socket, options, cancellationToken);
+            }
+            finally
+            {
+                linkedCts?.Dispose();
+                timeoutCts?.Dispose();
+            }
+        }
+
+        private static void ConfigureSocket(
+            ClientWebSocketOptions socketOptions,
+            WebSocketRequest request,
+            WebSocketOptions options)
+        {
+            if (options.Proxy != null && options.Proxy.Mode != ProxyMode.System)
+            {
+                throw new TransportException(
+                    TransportErrorKind.Unsupported,
+                    "ClientWebSocket supports only the system proxy.");
+            }
+
+            if (options.Redirects != RedirectPolicy.Error)
+            {
+                throw new TransportException(
+                    TransportErrorKind.Unsupported,
+                    "ClientWebSocket does not support configurable handshake redirects.");
+            }
+
+            if (options.Tls != null)
+            {
+                if (options.Tls.CustomRoots != null || options.Tls.Protocols != null)
+                {
+                    throw new TransportException(
+                        TransportErrorKind.Unsupported,
+                        "ClientWebSocket supports default validation, accept-all, and client certificates only.");
+                }
+                if (!options.Tls.ValidateCertificate)
+                {
+                    socketOptions.RemoteCertificateValidationCallback = (sender, certificate, chain, errors) => true;
+                }
+                if (options.Tls.ClientCertificate != null)
+                {
+                    socketOptions.ClientCertificates.Add(options.Tls.ClientCertificate);
+                }
+            }
+
+            if (!string.IsNullOrEmpty(options.SubProtocol))
+            {
+                socketOptions.AddSubProtocol(options.SubProtocol);
+            }
+
+            if (!string.IsNullOrEmpty(options.Origin) &&
+                !request.Headers.ContainsKey("Origin"))
+            {
+                socketOptions.SetRequestHeader("Origin", options.Origin);
+            }
+
+            foreach (var pair in request.Headers)
+            {
+                if (pair.Value != null)
+                {
+                    socketOptions.SetRequestHeader(pair.Key, pair.Value);
+                }
+            }
+
+            if (options.KeepAliveInterval.HasValue && options.KeepAliveInterval.Value > TimeSpan.Zero)
+            {
+                socketOptions.KeepAliveInterval = options.KeepAliveInterval.Value;
+            }
+        }
+    }
+}
