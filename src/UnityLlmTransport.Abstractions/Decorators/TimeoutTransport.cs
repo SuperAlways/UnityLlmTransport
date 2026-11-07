@@ -141,12 +141,24 @@ namespace UnityLlmTransport
 
                 CancellationTokenSource? timeoutCts = null;
                 CancellationTokenSource? linkedCts = null;
+                CancellationTokenRegistration timeoutRegistration = default;
                 try
                 {
                     if (budget != Timeout.InfiniteTimeSpan)
                     {
                         timeoutCts = new CancellationTokenSource(budget);
                         linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutCts.Token);
+                        // Unity Mono 的 HttpClient（WebRequest 栈）读中不观察取消令牌：
+                        // 超时必须主动 Abort 内层会话解堵读，否则读会拖到数据到来才返回。
+                        timeoutRegistration = timeoutCts.Token.Register(
+                            state =>
+                            {
+                                var timed = (TimedSession)state;
+                                timed.AbortForTimeout(timed.FirstByteReceived
+                                    ? TransportErrorKind.IdleTimeout
+                                    : TransportErrorKind.FirstByteTimeout);
+                            },
+                            _session);
                     }
 
                     var token = linkedCts != null ? linkedCts.Token : cancellationToken;
@@ -155,7 +167,7 @@ namespace UnityLlmTransport
                     {
                         read = await _inner.ReadAsync(buffer, token).ConfigureAwait(false);
                     }
-                    catch (OperationCanceledException ex) when (
+                    catch (Exception ex) when (
                         !cancellationToken.IsCancellationRequested &&
                         timeoutCts != null &&
                         timeoutCts.IsCancellationRequested)
@@ -182,6 +194,10 @@ namespace UnityLlmTransport
                 }
                 finally
                 {
+                    if (timeoutRegistration != default)
+                    {
+                        timeoutRegistration.Dispose();
+                    }
                     if (linkedCts != null)
                     {
                         linkedCts.Dispose();

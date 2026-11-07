@@ -1,4 +1,5 @@
 using System;
+using System.Net;
 using System.Net.Http;
 using System.Net.Sockets;
 using System.Security.Authentication;
@@ -31,6 +32,36 @@ namespace UnityLlmTransport.Tests
             var error = HttpClientErrorClassifier.Classify(new AuthenticationException("bad cert"), false, false);
             Assert.Equal(TransportErrorKind.Tls, error.Kind);
             Assert.False(error.IsRetryable);
+        }
+
+        [Fact]
+        public void TrustFailure_Under_HttpRequestException_Is_Tls()
+        {
+            // Unity Mono 的 WebRequest 栈形状：HttpRequestException 包 WebException(TrustFailure)。
+            var inner = new WebException("Error: TrustFailure", WebExceptionStatus.TrustFailure);
+            var error = HttpClientErrorClassifier.Classify(
+                new HttpRequestException("An error occurred while sending the request", inner), false, false);
+            Assert.Equal(TransportErrorKind.Tls, error.Kind);
+            Assert.False(error.IsRetryable);
+        }
+
+        [Fact]
+        public void Raw_SecureChannelFailure_Is_Tls()
+        {
+            var error = HttpClientErrorClassifier.Classify(
+                new WebException("A security channel failure occurred.", WebExceptionStatus.SecureChannelFailure),
+                false, false);
+            Assert.Equal(TransportErrorKind.Tls, error.Kind);
+            Assert.False(error.IsRetryable);
+        }
+
+        [Fact]
+        public void NonTls_WebException_Under_HttpRequestException_Stays_Connect()
+        {
+            var inner = new WebException("Unable to connect", WebExceptionStatus.ConnectFailure);
+            var error = HttpClientErrorClassifier.Classify(
+                new HttpRequestException("An error occurred while sending the request", inner), false, false);
+            Assert.Equal(TransportErrorKind.Connect, error.Kind);
         }
 
         [Fact]
