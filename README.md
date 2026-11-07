@@ -174,11 +174,13 @@ UnityLlmTransport/
     UnityLlmTransport.Abstractions/
     UnityLlmTransport.Sse/
     UnityLlmTransport.HttpClient/             # HttpClient 实现（桌面/后端；零 UnityEngine）
+    UnityLlmTransport.Auth/                   # ApiKey/OAuth 注入 + SignerFinalizer（Phase 4）
     UnityLlmTransport.UnityWebRequest.Core/   # 纯桥接/分类，netstandard2.1，零 UnityEngine
   tests/
     UnityLlmTransport.Tests/
     UnityLlmTransport.UnityWebRequest.Tests/
     UnityLlmTransport.HttpClient.Tests/       # 52 项：流式/取消/超时/代理/TLS/重定向/契约
+    UnityLlmTransport.Auth.Tests/             # 24 项：ApiKey/OAuth/Signer/401 管线
     Phase3TestSupport/                        # 进程内 Kestrel 测试服务（只进测试）
   unity/
     Phase2Harness/                   # Phase 2 Unity 侧 runner + build 脚本资产
@@ -187,7 +189,7 @@ UnityLlmTransport/
     UnityLlmTransport.Hosts.Unity/
 ```
 
-`src/` 与 `tests/` 已随 Phase 1/2/3 落地：`UnityLlmTransport.Abstractions`（端口/DTO/装饰器/Mock）、`UnityLlmTransport.Sse`（vendor SSE 解析器）、`UnityLlmTransport.HttpClient`（传输/会话/请求构建/handler 映射/错误分类，netstandard2.1 零 UnityEngine）、`UnityLlmTransport.UnityWebRequest.Core`（队列/流/分类/请求计划，纯逻辑）、`tests/UnityLlmTransport.Tests`、`tests/UnityLlmTransport.UnityWebRequest.Tests`、`tests/UnityLlmTransport.HttpClient.Tests`（含 `Phase3TestSupport` 进程内测试服务）。`unity/` 为 Phase 2/3 的 Unity 侧源码（适配层 + 协程 Host + 两个 harness，经 `scripts/assemble-phase2-unity.sh` / `assemble-phase3-unity.sh` 装配进 Unity 工程）；Phase 2 的 2021.3/6.3/6.6 + 2022.3 主基线 Mono/IL2CPP 结果见 `docs/spike/phase2-results.md`，HttpClient 四版本 Mono + 共享修复的 UWR 短回归结果见 `docs/spike/phase3-results.md`。
+`src/` 与 `tests/` 已随 Phase 1/2/3/4 落地：`UnityLlmTransport.Abstractions`（端口/DTO/装饰器/Mock）、`UnityLlmTransport.Sse`（vendor SSE 解析器）、`UnityLlmTransport.HttpClient`（传输/会话/请求构建/handler 映射/错误分类，netstandard2.1 零 UnityEngine）、`UnityLlmTransport.Auth`（ApiKey/OAuth 注入 + SignerFinalizer，纯 .NET）、`UnityLlmTransport.UnityWebRequest.Core`（队列/流/分类/请求计划，纯逻辑）、`tests/UnityLlmTransport.Tests`、`tests/UnityLlmTransport.UnityWebRequest.Tests`、`tests/UnityLlmTransport.HttpClient.Tests`、`tests/UnityLlmTransport.Auth.Tests`（含 `Phase3TestSupport` 进程内测试服务）。`unity/` 为 Phase 2/3 的 Unity 侧源码（适配层 + 协程 Host + 两个 harness，经 `scripts/assemble-phase2-unity.sh` / `assemble-phase3-unity.sh` 装配进 Unity 工程）；Phase 2 的 2021.3/6.3/6.6 + 2022.3 主基线 Mono/IL2CPP 结果见 `docs/spike/phase2-results.md`，HttpClient 四版本 Mono + 共享修复的 UWR 短回归结果见 `docs/spike/phase3-results.md`；Auth 为纯 .NET，无 Unity 矩阵。
 
 ---
 
