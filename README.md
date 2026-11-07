@@ -1,7 +1,7 @@
 # UnityLlmTransport
 
-> **状态**：立项/问题定义阶段（2026-11-06）。设计未定，先不写实现。
-> **定位**：Unity AI mod 生态的**独立通讯底座**——在 Unity + netstandard2.1 + AI mod 运行条件下，承载 pi-ai / pi-agent-core 的**全部通讯需求**。PiUnityAgent 是首个消费者，但不是唯一消费者。
+> **状态**：Phase 0（Spike）/ Phase 1（Core）已完成（2026-11-07，已合入 main）；Phase 2（UWR）待开工。
+> **定位**：Unity 运行时（AI mod 与原生 LLM/Agent 驱动的游戏）的**独立通讯底座**——在 Unity + netstandard2.1 条件下，承载 pi-ai / pi-agent-core 的**全部通讯需求**。PiUnityAgent 是首个消费者，但不是唯一消费者。
 
 ---
 
@@ -58,6 +58,7 @@
 - **不做 provider 协议解析**：OpenAI/Anthropic/Gemini 的 JSON 映射属于 `PiUnityAgent.Ai`（S4/S5）。
 - **不做 agent loop / 工具执行**：属于 `PiUnityAgent.Core`。
 - **不做 UI**：属于宿主/mod。
+- **不服务非 Unity 引擎**：Unreal/Godot/自研 C++ 等属于原版 pi / pi.net 或新 transport 的范围。
 - **不绑定 Unity 版本**：只提供宿主适配层，不要求升级引擎。
 - **不把“整包缓冲”叫流式**。
 
@@ -71,7 +72,15 @@
 - 不能升级 Unity；`netstandard2.1`；
 - 现有 mod 各写一套 UWR/裸 TCP 封装，需要统一。
 
-核心抽象仍不引用 `UnityEngine`（为了单测和可替换），但产品范围是 **Unity 宿主**；.NET 8 后端只是可选的消费方，不是本组件的目标环境。
+核心抽象仍不引用 `UnityEngine`（为了单测和可替换），但产品范围是 **Unity 运行时**；.NET 8 后端只是可选的消费方，不是本组件的目标环境。
+
+**三类宿主的选型**（同一套定义、不同组合）：
+
+| 宿主 | 必需 | 可选/不需要 |
+|---|---|---|
+| AI mod（游戏锁死环境） | `Abstractions` + `Sse` + UWR 适配器 + `Hosts.Unity` | — |
+| 原生 Unity AI 游戏（自研、可控制构建） | `PiUnityAgent` + `Abstractions` + `Sse`；传输实现任选 | 可用我们的 UWR/HttpClient 适配器，也可注入自写 transport；`Hosts.Unity` 仅按需 |
+| .NET 8 后端 | pi.net + HttpClient | 不需要本组件；若与原生 Unity 客户端混用，`Abstractions` 可作统一端口 |
 
 ---
 
@@ -145,7 +154,7 @@ UnityLlmTransport/
     spike/
 ```
 
-`src/`、`tests/` 在设计确认后再建。
+`src/` 与 `tests/` 已随 Phase 1 落地：`UnityLlmTransport.Abstractions`（端口/DTO/装饰器/Mock）、`UnityLlmTransport.Sse`（vendor SSE 解析器）、`tests/UnityLlmTransport.Tests`（53 项单测）。
 
 ---
 
