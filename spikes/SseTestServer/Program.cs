@@ -18,6 +18,8 @@ while (true)
         continue;
     }
 
+    try
+    {
     ctx.Response.ContentType = "text/event-stream";
     ctx.Response.SendChunked = true;
     var output = ctx.Response.OutputStream;
@@ -61,4 +63,10 @@ while (true)
 
     await output.WriteAsync(Encoding.UTF8.GetBytes("data: [DONE]\n\n"));
     ctx.Response.Close();
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine("request error: " + ex.Message);
+        try { ctx.Response.Abort(); } catch { }
+    }
 }

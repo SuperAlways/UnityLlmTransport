@@ -139,6 +139,9 @@ UnityLlmTransport/
     superpowers/
       specs/2026-11-06-phase0-spike-design.md
       plans/2026-11-06-phase0-spike.md
+    SOP/
+      README.md
+      Unity多版本通讯测试-SOP-2026-11-06.md
     spike/
 ```
 

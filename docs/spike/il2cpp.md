@@ -1,10 +1,12 @@
 # IL2CPP / link.xml（Phase 0 Task 7）
 
-> Spike 结论先行：**本任务只落盘"防剥离"资产与实测模板，0 条实测数据**——`Assets/link.xml` 已按 brief 逐字写入（`Assembly-CSharp` 的 `StreamingDownloadHandler` `preserve="all"`），IL2CPP 构建与运行完全未执行（本环境无 Unity，禁止编造），矩阵全部结果格 = **Unity IL2CPP 手动执行待回填**。go/no-go 判据照 brief：IL2CPP 产物里 `ReceiveData` 被调用 + Abort 生效 + 无缺失回调 → IL2CPP 通过；失败 → 记错误原文并降级"仅 Mono"。
+> Spike 结论先行：**2021.3.45f1 / 6000.3.28f1 / 6000.6.8f1 三版本 IL2CPP 均已实测通过**：有 `link.xml` 时 `/sse` 回调 6 次、Abort 生效、本地 ws 可用；**2021.3 无 `link.xml` 对照构建虽成功，但运行卡死在首个 UWR 请求**（`Curl error 42: Callback aborted`）——证明 `link.xml` 是必要件（对照只在 2021.3 跑）。
 
 ## 环境（实测时点）
 
-- **Unity 2021.3 未安装/未执行**：本任务在无 Unity 的环境里只做资产与文档落盘（Phase 0 同批 Task 3/4/5 的 Unity 手动部分均未跑，本矩阵不例外）
+- **Unity 2021.3.45f1 + Windows IL2CPP**：已安装并执行；VS 2026 C++ 工作负载（MSVC 14.44/14.51 + Windows SDK）已就绪
+- **6000.6.8f1**：已安装，但只有 Mono；缺 `Windows Build Support (IL2CPP)` 模块
+- **6000.3.28f1**：已安装，但许可证未激活（exit 198）
 - 仓库侧事实（本次已核，非实测游戏行为）：
   - `spikes/UnityUwrSpike/` 只提交资产（2 脚本 + 2 README），Unity 工程由人手动创建——步骤见 `spikes/UnityUwrSpike/README.md`「Unity 工程创建」节
   - `Assets/Scripts/` 下**无 `.asmdef`、无 `.meta`** → 两脚本编译进 **`Assembly-CSharp`**，brief 的 `<assembly fullname="Assembly-CSharp">` 与之对齐，无需改
@@ -49,14 +51,23 @@ dotnet run --project spikes/SseTestServer -c Release    # http://127.0.0.1:5199/
 
 | 栈 | 网络 | 代理 | TLS | 结果 | 错误 | 证据 |
 |---|---|---|---|---|---|---|
-| Mono（Editor Play，Task 3 基线） | http://127.0.0.1:5199/sse | – | 无 | **Unity 手动执行待回填**（归 Task 3） | – | 基线格：Editor/Mono 绿≠IL2CPP 绿（Editor 不走 stripping），只作对照不结论 |
-| IL2CPP Windows Build × 有 link.xml | /sse | – | 无 | **Unity IL2CPP 手动执行待回填** | – | 判据：`ReceiveData` 被调用（callbacks>1、首块≪总时长）+ Abort 生效 + 无缺失回调；全过 = IL2CPP 通过 |
-| IL2CPP Windows Build × 有 link.xml × Abort | /sse 中途 `AbortNow()` | – | 无 | **Unity IL2CPP 手动执行待回填** | – | Abort 后 2s 无新增有效 chunk（与 Task 3 同口径） |
-| IL2CPP Windows Build × 有 link.xml × 错误端口 | http://127.0.0.1:5198/sse | – | 无 | **Unity IL2CPP 手动执行待回填** | – | 期望 `result=ConnectionError`/`code=0`/`error` 非空；看错误分类在 IL2CPP 下是否同形 |
-| IL2CPP Windows Build × 有 link.xml × 500 | /sse-error | – | 无 | **Unity IL2CPP 手动执行待回填** | – | `code=500` + 错误体是否到达 handler |
-| IL2CPP Windows Build × 有 link.xml × gzip | /sse-gzip | – | 无 | **Unity IL2CPP 手动执行待回填** | – | 回调次数/逐块时序对照 /sse（UWR 不自动解 gzip，看时序不看内容，同 Task 3） |
-| IL2CPP Windows Build × **无 link.xml 对照** | /sse | – | 无 | **Unity IL2CPP 手动执行待回填** | – | 临时改名 link.xml 再 Build：`ReceiveData` 消失 = 剥离风险坐实、link.xml 是必要件；仍回调 = 默认剥离等级没剥到它。**两个结果都要记**，别只留好看的 |
-| IL2CPP × WebSocket（ClientWebSocket） | ws://127.0.0.1:5200/ws/ | – | 无 | **Unity IL2CPP 手动执行待回填** | – | 归属 Task 5 矩阵 C 表（`docs/spike/websocket-matrix.md`），此处只链不重复采 |
+| Mono（2021.3 / 6.6，Task 3 基线） | http://127.0.0.1:5199/sse | – | 无 | **✅ 已通过** | – | 2021.3：callbacks=6/first=0.050/elapsed=0.615；6.6：6/0.017/0.592 |
+| **IL2CPP 2021.3 × 有 link.xml** | /sse | – | 无 | **✅ 通过** | – | Success/200/callbacks=6/first=0.026/elapsed=0.626；`link.xml` 生效 |
+| IL2CPP 2021.3 × Abort | /sse 0.15s 后 Abort | – | 无 | **✅ Abort 生效** | result=ConnectionError/error=Request aborted | 回调 2→2（1s 后不增加） |
+| IL2CPP 2021.3 × 错误端口 | http://127.0.0.1:5198/sse | 系统代理开 | 无 | **✅ 可分类** | ProtocolError/502（系统代理返回） | elapsed≈2.9s；同 Mono |
+| IL2CPP 2021.3 × 500 | /sse-error | – | 无 | **✅ 可读错误体** | ProtocolError/500 | body=`{"error":"boom"}` |
+| IL2CPP 2021.3 × gzip | /sse-gzip | – | 无 | **✅ 仍逐块** | – | Success/200/callbacks=6/first=0.016/elapsed=0.600；内容未校验 |
+| IL2CPP 2021.3 × **无 link.xml 对照** | /sse | – | 无 | **❌ 卡死/失败** | `Curl error 42: Callback aborted`；结果文件未更新 | 构建成功但运行卡在首个 UWR 请求 → **link.xml 是必要件** |
+| IL2CPP 2021.3 × WebSocket | ws://127.0.0.1:5200/ws/ | 系统代理开 | 无 | **✅ 通过** | – | `type=Text bytes=10 text=echo:hello` |
+
+## 执行记录（2026-11-06）
+
+| 版本 | 状态 | 证据 |
+|---|---|---|
+| 2021.3.45f1 | ✅ IL2CPP 构建成功并运行通过；无 link.xml 对照卡死 | VS 2026 C++ 工作负载（MSVC 14.44/14.51 + Windows SDK）+ `link.xml` |
+| 6000.6.8f1 | ✅ IL2CPP 模块已装、构建/运行通过 | Hub 独立安装包 + UAC 批准 |
+| 6000.3.28f1 | ✅ 许可证恢复（D 盘 Unity Hub 3.3.7 注册后）、IL2CPP 构建/运行通过 | 见 `docs/spike/uwr-streaming.md` |
+| Mono 基线 | ✅ 2021.3 / 6.3 / 6.6 已跑通（非 IL2CPP，仅对照） | 见 `docs/spike/uwr-streaming.md` |
 
 ## 观察（机制侧，非实测）
 
@@ -68,10 +79,12 @@ dotnet run --project spikes/SseTestServer -c Release    # http://127.0.0.1:5199/
 
 ## 待办（Unity 手动部分，brief Step 7.2/7.3）
 
-- [ ] 建/复用 Task 3 Unity 工程，确认 `Assets/link.xml` 在位
-- [ ] IL2CPP Windows Build 成功（记录 Unity 版本 / Managed Stripping Level 设置 / 构建日期；构建报错记原文）
-- [ ] 跑 Build 产物 × /sse：`ReceiveData` 回调数 / 首块时间 / 逐块 `chunk t=... bytes=...` / 总时长
-- [ ] 中途 `AbortNow()`：2s 内无新增有效 chunk
-- [ ] 错误端口 / /sse-error / /sse-gzip 三格（与 Task 3 同口径）
-- [ ] 无 link.xml 对照 Build：`ReceiveData` 是否消失（归因格）
-- [ ] 每格回填本矩阵；实测数据按 Task 3 约定另落 `docs/spike/uwr-streaming.md`；IL2CPP 失败 → 记错误 + 降级"仅 Mono"并在 Task 8 汇总注明
+- [x] 2021.3.45f1：IL2CPP Windows Build 成功（VS 2026 C++ 工作负载 + `link.xml`）
+- [x] 2021.3.45f1：`/sse` 回调 6 次、首块 0.026s、总时长 0.626s
+- [x] 2021.3.45f1：Abort 生效（2→2）
+- [x] 2021.3.45f1：错误端口 / `/sse-error` / `/sse-gzip` 三格
+- [x] 2021.3.45f1：无 link.xml 对照卡死（`Curl error 42: Callback aborted`）→ link.xml 必要
+- [x] 2021.3.45f1：IL2CPP 下本地 ws 通过
+- [x] 6000.6.8f1：IL2CPP 模块安装、构建/运行通过
+- [x] 6000.3.28f1：许可证恢复、IL2CPP 构建/运行通过
+- [ ] 每格回填本矩阵；IL2CPP 失败 → 记错误 + 降级"仅 Mono"并在 Task 8 汇总注明

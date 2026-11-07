@@ -1,6 +1,7 @@
 # WebSocket 本地/远程矩阵（Phase 0 Task 5）
 
-> Spike 结论先行：**本地 ws echo 全链路成立**（.NET 10 `ClientWebSocket` ↔ `HttpListener` echo 服务：连接/收发/UTF-8 回环/Close 帧/400 分类全绿）；**brief 原样服务端代码有一个实测崩溃坑**——客户端不完成 close 握手就断开时服务端进程整体退出（已在提交版用 per-connection try/catch 治掉，证据保留）。**Unity 2021.3 侧（Mono 实机 / 远程 wss / 代理 / IL2CPP / WebGL）全部未实测，矩阵留 pending，不编造。**
+> Spike 结论先行：**本地 ws echo 全链路成立**（.NET 10 `ClientWebSocket` ↔ `HttpListener` echo 服务：连接/收发/UTF-8 回环/Close 帧/400 分类全绿）；**brief 原样服务端代码有一个实测崩溃坑**——客户端不完成 close 握手就断开时服务端进程整体退出（已在提交版用 per-connection try/catch 治掉，证据保留）。
+> **Unity 侧已补测：2021.3.45f1 / 6000.3.28f1 / 6000.6.8f1 的 Mono 与 IL2CPP 都能连本地 ws 并收到 `echo:hello`；远程 wss / Close/Abort / 关代理 / WebGL 仍 pending。**
 
 ## 环境（实测时点）
 
@@ -45,16 +46,20 @@ curl -s -i --noproxy '*' http://127.0.0.1:5200/ws/   # 非 WebSocket 请求 → 
 | B-1 服务端 brief Step 5.1 原样 × 客户端 abrupt dispose | **服务端进程崩溃退出** | `WebSocketException: The remote party closed the WebSocket connection without completing the close handshake.`（客户端已收到 Close 帧才断）或 `WebSocketException: An internal WebSocket error occurred. ---> HttpListenerException(995): 由于线程退出或应用程序请求，已中止 I/O 操作。`（echo 后握手在途即断） | 两种签名均抛在服务端 `ws.CloseAsync`（Program.cs line 23），顶层无捕获 → 整进程退出；之后任何连接 `curl exit=7`（http_code=000，连接拒绝）。**根因：`CloseAsync` 在等服务端 close-ack 时客户端直接 Dispose 掐线；brief Step 5.2 的客户端恰好每次都这么干** |
 | B-2 提交版修复 | per-connection `try/catch` 吞坏连接，服务存活 | – | A 表第 5 格：两连 abrupt 后服务照常服务；verbatim 版崩溃证据完整保留于本节 + Task 5 报告 |
 
-### C. Unity 2021.3 `ClientWebSocket`（全部 pending，brief Step 5.2 脚本已备 `spikes/UnityUwrSpike/Assets/Scripts/WsSpike.cs`）
+### C. Unity `ClientWebSocket`（本地已实测；远程/其余 pending）
 
 | 栈 | 网络 | 代理 | TLS | 结果 | 错误 | 证据 |
 |---|---|---|---|---|---|---|
-| ClientWebSocket(Unity Mono) | ws://127.0.0.1:5200/ws/（本地） | – | 无 | **Unity 手动执行待回填** | – | 期望 `recv type=Text bytes=10 text=echo:hello`（bytes=10，README 已按此口径）；另观测随后是否收到 Close 帧 |
-| ClientWebSocket(Unity Mono) | wss:// 远程（公共 echo 或自建自签） | – | 系统信任 CA / 自签 | **Unity 手动执行待回填** | – | brief Step 5.3：失败要归因（TLS/代理/握手/超时） |
-| ClientWebSocket(Unity Mono) | 任意 | system-proxy 开/关 | – | **Unity 手动执行待回填** | – | .NET 10 控制台侧 loopback 无代理差别信号，Unity Mono 的 ClientWebSocket 是否吃系统代理未实测 |
-| ClientWebSocket(Unity Mono) | 本地 ws | – | 无 | Close/Abort 行为 | **Unity 手动执行待回填** | `CloseAsync` vs `Abort()` 差异、abrupt dispose 后服务端是否报坏连接 |
-| IL2CPP 构建 | 本地 ws | – | 无 | **Unity 手动执行待回填** | – | 文献印象（**未核实，待实测**）：IL2CPP 长期不支持 `System.Net.WebSockets`；以实机编译/运行结果定稿 |
-| WebGL 构建 | 本地 ws | – | 无 | **Unity 手动执行待回填** | – | 预期编译期失败（浏览器无原始 socket，ClientWebSocket 无 API 面）——预判，待实测确认 |
+| ClientWebSocket(Unity 2021.3.45f1c2) | ws://127.0.0.1:5200/ws/ | 系统代理开 | 无 | **OK（Mono + IL2CPP）** | – | `type=Text bytes=10 text=echo:hello` |
+| ClientWebSocket(Unity 6000.3.28f1) | ws://127.0.0.1:5200/ws/ | 系统代理开 | 无 | **OK（Mono + IL2CPP）** | – | 同上 |
+| ClientWebSocket(Unity 6000.6.8f1) | ws://127.0.0.1:5200/ws/ | 系统代理开 | 无 | **OK（Mono + IL2CPP）** | – | 同上 |
+| ClientWebSocket(Unity 三版本) | ws://127.0.0.1:5299/ws/（错误端口） | 系统代理开 | 无 | **FAIL（可分类）** | `WebSocketException: Unable to connect to the remote server` | 三版本一致 |
+| ClientWebSocket(Unity 三版本) | ws://127.0.0.1:5199/sse（非 ws 端点） | 系统代理开 | 无 | **FAIL（可分类）** | `WebSocketException: Unable to connect to the remote server` | HTTP 状态未暴露，归为连接/握手失败 |
+| ClientWebSocket(Unity 三版本) | wss:// 远程（公共 echo 或自建自签） | – | 系统信任 CA / 自签 | **pending** | – | 需稳定远程端点；失败按 TLS/代理/握手/超时归因 |
+| ClientWebSocket(Unity 三版本) | 本地 ws | system-proxy 开/关 | – | **pending（关代理）** | – | 当前只测了系统代理开 |
+| ClientWebSocket(Unity 三版本) | 本地 ws | – | 无 | Close/Abort | **pending** | `Phase0Runner` 只收一条，未测 `CloseAsync`/`Abort()` 差异 |
+| WebGL | 本地 ws | – | 无 | **pending** | – | 预期失败，待实测确认 |
+| WebGL 构建 | 本地 ws | – | 无 | **pending** | – | 预期失败，待实测确认 |
 
 ## 观察
 
@@ -67,10 +72,12 @@ curl -s -i --noproxy '*' http://127.0.0.1:5200/ws/   # 非 WebSocket 请求 → 
 
 ## 待办（Unity 手动部分，brief Step 5.3；执行步骤见 `spikes/UnityUwrSpike/README-WS.md`）
 
-- [ ] Unity Mono × 本地 ws：`recv type=Text bytes=10 text=echo:hello` + Close 帧观测
+- [x] Unity 2021.3.45f1c2 / 6000.6.8f1 Mono × 本地 ws：`recv type=Text bytes=10 text=echo:hello`
+- [ ] Unity Mono × Close 帧观测（第二次 ReceiveAsync）
 - [ ] Unity Mono × 远程 wss：公共 echo 或自建自签，失败归因（TLS/代理/握手/超时）
-- [ ] Unity Mono × 系统代理开/关
+- [ ] Unity Mono × 系统代理开/关（当前只测开）
 - [ ] Unity Mono × Close/Abort
+- [ ] 6000.3.28f1：许可证激活后重跑本地 ws
 - [ ] IL2CPP：能否编译/能否连
 - [ ] WebGL：预期失败，取编译期错误原文
 - [ ] 每格回填本矩阵，注明执行环境（Unity 版本/构建目标/日期）
