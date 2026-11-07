@@ -1,12 +1,12 @@
-# Phase 2 · 三版本实机结果（2022.3 主基线待补）
+# Phase 2 · 四版本实机结果（2021.3/6.3/6.6 + 2022.3.62f3c1）
 
-> 日期：2026-11-07。环境：Windows 11 + Unity `2021.3.45f1` / `6000.3.28f1` / `6000.6.8f1`，各出 Mono2x + IL2CPP 两个 player 构建。
-> **2022.3.62f3c1 测试主基线（游戏实际 f2）**：补测见文末“待补”节；未跑，不填结果。
+> 日期：2026-11-07。环境：Windows 11 + Unity `2021.3.45f1` / `6000.3.28f1` / `6000.6.8f1`，各出 Mono2x + IL2CPP 两个 player 构建；**新增 `2022.3.62f3c1` 主基线，同样 Mono2x + IL2CPP。**
+> **2022.3.62f3c1 测试主基线（游戏实际 f2）**：已补测，见文末“2022.3.62f3c1 主基线结果”节；Mono/IL2CPP 15/15。
 > 构建命令见 `unity/Phase2Harness/README.md`；SSE 测试服务 = `spikes/SseTestServer`（`127.0.0.1:5199`）。
 > 原始日志：`D:/UnitySpikes/phase2-<ver>-<backend>-player.log`；摘录文件 `D:/UnitySpikes/phase2-<ver>-<backend>-results.txt`，已逐字入库 → `docs/spike/evidence/phase2/<ver>-<backend>-results.txt`（六组各 15/15 `|OK|`）。
 > ⚠️ 2021.3 的构建目录是 `Builds/Phase2/2021.3.45f1c2/`（`Application.unityVersion` 带 c2 后缀，其余两版与编辑器版本号一致）。
 
-**总裁决：三版本 × 双后端 = 6 组全量场景，每组 15/15 `|OK|`，无一处 `|FAIL|`。IL2CPP 门禁只要求 U1/U3/U5，实测同样 15/15。**
+**总裁决：2021.3/6.3/6.6 三版本 × 双后端 = 6 组，每组 15/15 `|OK|`；2022.3.62f3c1 主基线 × 双后端 = 2 组，每组 15/15 `|OK|`。合计 8 组无 `|FAIL|`。IL2CPP 门禁只要求 U1/U3/U5，实测同样 15/15。**
 
 ## Mono 矩阵（全量 U1–U11）
 
@@ -190,14 +190,73 @@ PHASE2 U11_abort_residual|OK|chunks_at_abort=1|after_1s=1
 
 ---
 
-## 待补 · 2022.3 主基线（2026-11-07）
+## 2022.3.62f3c1 主基线结果（2026-11-07）
 
-> **状态**：未跑。Hub 编辑器下载/安装中（目录名 `2022.3.62f3c1`）；游戏实际 `2022.3.62f2`。结果必须按 `Application.unityVersion` 分列，f2/f3c1 不得混写；未跑前不得填 `|OK|`。
->
-> 场景：Mono 全量 U1–U11（最低 U1/U3/U5/U6/U8/U9/U11）；IL2CPP 至少 U1/U3/U5。
+> 环境：Unity `2022.3.62f3c1`（Hub 安装）；游戏实际报告 `2022.3.62f2`，最终游戏内验收以 f2 为准；f3c1/f2 不得混写。
+> 原始证据：`docs/spike/evidence/phase2/2022.3.62f3c1-mono-results.txt`、`2022.3.62f3c1-il2cpp-results.txt`。
 
-| 场景 | 2022.3 Mono | 2022.3 IL2CPP |
-|---|---|---|
-| U1–U11 | pending | pending（至少 U1/U3/U5） |
+**总裁决：2022.3.62f3c1 × Mono/IL2CPP = 2 组，每组 15/15 `|OK|`，无一处 `|FAIL|`。**
 
-**判据**：同现有 Mono/IL2CPP 矩阵；结果写入本文件新表 + `docs/spike/evidence/phase2/<ver>-<backend>-results.txt`。
+| 场景 | 2022.3.62f3c1 Mono | 2022.3.62f3c1 IL2CPP | 判据 |
+|---|---|---|---|
+| U1 流式 | OK status=200 open_ms=114 first_ms=130 total_ms=670 items=6 | OK status=200 open_ms=99 first_ms=99 total_ms=650 items=6 | open_ms < total_ms；items≥6 ✅ |
+| U2 首字节快照 | OK status=200 content_type=True | OK status=200 content_type=True | status>0；content_type=True ✅ |
+| U3 取消 | OK kind=Cancelled | OK kind=Cancelled | Cancelled/Aborted ✅ |
+| U4 首字节超时 | OK kind=FirstByteTimeout | OK kind=FirstByteTimeout | FirstByteTimeout ✅ |
+| U4 空闲超时 | OK kind=IdleTimeout | OK kind=IdleTimeout | IdleTimeout ✅ |
+| U5 溢出 | OK kind=Overflow（65536） | OK kind=Overflow | Overflow ✅ |
+| U6 500 错误体 | OK status=500 body={"error":"boom"} | OK status=500 body={"error":"boom"} | 500；body 含 boom ✅ |
+| U7 TLS accept | OK status=200 | OK status=200 | 200 ✅ |
+| U7 TLS default | OK kind=Tls | OK kind=Tls | Tls ✅ |
+| U7 显式代理 | OK kind=Unsupported | OK kind=Unsupported | Unsupported ✅ |
+| U8 gzip | OK items=6 first_ms=81 | OK items=6 first_ms=100 | items≥6 ✅ |
+| U9 线程 | OK main=1 parse=6 observer=9 chunks=8 | OK main=1 parse=9 observer=7 chunks=8 | parse/observer ≠ main ✅ |
+| U10 重定向 Error | OK kind=Protocol | OK kind=Protocol | 有异常 ✅ |
+| U10 重定向 Follow | OK status=200 items=6 | OK status=200 items=6 | items≥6 ✅ |
+| U11 Abort 残留 | OK at_abort=1 after_1s=1 | OK at_abort=1 after_1s=1 | after_1s == at_abort ✅ |
+
+### 原始结果行 · Mono · 2022.3.62f3c1
+
+```
+PHASE2 unity_version=2022.3.62f3c1
+PHASE2 main_thread=1
+PHASE2 U1_stream|OK|status=200|open_ms=114|items=6|first_ms=130|total_ms=670|data={"choices":[{"delta":{"content":"你"}}]}{"choices":[{"delta":{"content":"好"}}]}{"choices":[{"delta":{"content":"，"}}]}{"choices":[{"delta":{"content":"世"}}]}{"choices":[{"delta":{"content":"界"}}]}[DONE]
+PHASE2 U2_snapshot|OK|status=200|content_type=True
+PHASE2 U3_cancel|OK|cancel_error=TransportException kind=Cancelled code=- msg=Response aborted (Cancelled).
+PHASE2 U4_first_byte_timeout|OK|kind=FirstByteTimeout
+PHASE2 U4_idle_timeout|OK|kind=IdleTimeout
+PHASE2 U5_overflow|OK|kind=Overflow|msg=Response exceeded ChunkQueue capacity of 65536 bytes.
+PHASE2 U6_error_body|OK|status=500|body={"error":"boom"}
+PHASE2 U7_tls_accept|OK|status=200
+PHASE2 U7_tls_default|OK|kind=Tls
+PHASE2 U7_explicit_proxy|OK|kind=Unsupported
+PHASE2 U8_gzip|OK|items=6|first_ms=81|data={"choices":[{"delta":{"content":"你"}}]}{"choices":[{"delta":{"content":"好"}}]}{"choices":[{"delta":{"content":"，"}}]}{"choices":[{"delta":{"content":"世"}}]}{"choices":[{"delta":{"content":"界"}}]}[DONE]
+PHASE2 U9_threads|OK|main=1|parse=6|observer=9|chunks=8
+PHASE2 U10_redirect_error|OK|kind=Protocol
+PHASE2 U10_redirect_follow|OK|status=200|items=6
+PHASE2 U11_abort_residual|OK|chunks_at_abort=1|after_1s=1
+```
+
+### 原始结果行 · IL2CPP · 2022.3.62f3c1
+
+```
+PHASE2 unity_version=2022.3.62f3c1
+PHASE2 main_thread=1
+PHASE2 U1_stream|OK|status=200|open_ms=99|items=6|first_ms=99|total_ms=650|data={"choices":[{"delta":{"content":"你"}}]}{"choices":[{"delta":{"content":"好"}}]}{"choices":[{"delta":{"content":"，"}}]}{"choices":[{"delta":{"content":"世"}}]}{"choices":[{"delta":{"content":"界"}}]}[DONE]
+PHASE2 U2_snapshot|OK|status=200|content_type=True
+PHASE2 U3_cancel|OK|cancel_error=TransportException kind=Cancelled code=- msg=Response aborted (Cancelled).
+PHASE2 U4_first_byte_timeout|OK|kind=FirstByteTimeout
+PHASE2 U4_idle_timeout|OK|kind=IdleTimeout
+PHASE2 U5_overflow|OK|kind=Overflow|msg=Response exceeded ChunkQueue capacity of 65536 bytes.
+PHASE2 U6_error_body|OK|status=500|body={"error":"boom"}
+PHASE2 U7_tls_accept|OK|status=200
+PHASE2 U7_tls_default|OK|kind=Tls
+PHASE2 U7_explicit_proxy|OK|kind=Unsupported
+PHASE2 U8_gzip|OK|items=6|first_ms=100|data={"choices":[{"delta":{"content":"你"}}]}{"choices":[{"delta":{"content":"好"}}]}{"choices":[{"delta":{"content":"，"}}]}{"choices":[{"delta":{"content":"世"}}]}{"choices":[{"delta":{"content":"界"}}]}[DONE]
+PHASE2 U9_threads|OK|main=1|parse=9|observer=7|chunks=8
+PHASE2 U10_redirect_error|OK|kind=Protocol
+PHASE2 U10_redirect_follow|OK|status=200|items=6
+PHASE2 U11_abort_residual|OK|chunks_at_abort=1|after_1s=1
+```
+
+**结论**：2022.3.62f3c1 主基线 Mono/IL2CPP 全量 U1–U11 通过；唯一未覆盖的是 f2 游戏内最终验收（属 PiUnityAgent S4）。

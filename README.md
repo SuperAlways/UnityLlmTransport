@@ -1,6 +1,6 @@
 # UnityLlmTransport
 
-> **状态**：Phase 0/1/2 已完成（2021.3/6.3/6.6，2026-11-07）；**2022.3.62f3c1 测试主基线补测 pending（Hub 编辑器下载/安装中；游戏实际 f2）**；Phase 3 待开工。
+> **状态**：Phase 0/1/2 已完成（2021.3/6.3/6.6 + 2022.3.62f3c1，2026-11-07；2022.3 主基线 Mono/IL2CPP U1–U11 15/15）；Phase 3 开发中（worktree）。
 > **定位**：Unity 运行时（AI mod 与原生 LLM/Agent 驱动的游戏）的**独立通讯底座**——在 Unity + netstandard2.1 条件下，承载 pi-ai / pi-agent-core 的**全部通讯需求**。PiUnityAgent 是首个消费者（通过其自有 Fetch 端口 + Host 适配器），但不是唯一消费者。
 
 ---
@@ -188,7 +188,7 @@ UnityLlmTransport/
 ## 八、待定决策
 
 1. Unity 前端直连是首要形态；.NET 8 后端不作为本组件目标（已有 HttpClient/pi.net）——**已定**；
-2. 传输实现顺序：UWR（Phase 2 已过 2021.3/6.3/6.6；2022.3 主基线补测中）→ HttpClient（Phase 3）→ RawTcp/WebSocket（Phase 5）——**已定**；
+2. 传输实现顺序：UWR（Phase 2 已过 2021.3/6.3/6.6 + 2022.3.62f3c1）→ HttpClient（Phase 3）→ RawTcp/WebSocket（Phase 5）——**已定**；
 3. WebGL 是否进 M1：**M2 再做**；
 4. 认证范围：API Key 先行，OAuth/SigV4 的接口形状在 Phase 4 补；
 5. 重试策略归属：传输层只做分类；策略在 provider adapter（PiUnityAgent S4）——**已定**；
@@ -199,7 +199,7 @@ UnityLlmTransport/
 
 ## 九、下一步
 
-1. **Phase 2 follow-up · 2022.3.62f3c1 测试主基线**：Hub 编辑器下载/安装中；跑 Mono/IL2CPP 冒烟并入库（游戏实际 f2，最终游戏内验收以 f2 为准；不阻塞 S3，S4 前完成）；
+1. **Phase 2 follow-up · 2022.3.62f3c1 测试主基线**：已补测通过（Mono/IL2CPP U1–U11 15/15）；证据见 `docs/spike/phase2-results.md` 与 `docs/spike/evidence/phase2/`；游戏实际 f2 的最终游戏内验收属 PiUnityAgent S4；
 2. **Phase 3 · HttpClient**：显式代理/TLS/桌面路径；`Consumers` 可用其作为 Fetch 端口的 .NET 实现；
 3. **Phase 4 · Auth**：API Key/OAuth 注入、401 refresh、Finalizer；PiUnityAgent 适配器由 PiUnityAgent 侧维护，本组件提供契约测试消费者；
 4. **Phase 5 · 可选传输**：WebSocket / RawTcp / WebGL（M2）；
