@@ -13,5 +13,6 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\UnityLlmTransport.Abstractions\UnityLlmTransport.Abstractions.csproj" />
+    <ProjectReference Include="..\..\src\UnityLlmTransport.Sse\UnityLlmTransport.Sse.csproj" />
   </ItemGroup>
 </Project>
