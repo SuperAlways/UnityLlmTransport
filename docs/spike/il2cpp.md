@@ -4,12 +4,12 @@
 
 ## 环境（实测时点）
 
-- **Unity 2021.3.45f1 + Windows IL2CPP**：已安装并执行；VS 2026 C++ 工作负载（MSVC 14.44/14.51 + Windows SDK）已就绪
-- **6000.6.8f1**：已安装，但只有 Mono；缺 `Windows Build Support (IL2CPP)` 模块
-- **6000.3.28f1**：已安装，但许可证未激活（exit 198）
+- **Unity 2021.3.45f1 + Windows IL2CPP**：✅ 已安装并实测通过；VS 2026 C++ 工作负载（MSVC 14.44/14.51 + Windows SDK）已就绪
+- **6000.6.8f1**：✅ `Windows Build Support (IL2CPP)` 模块已装（Hub 在线模块 404，改本地独立安装包手动安装 + UAC 批准），IL2CPP 构建/运行已实测通过
+- **6000.3.28f1**：✅ 许可证已激活（曾报 exit 198；在 `D:\tools\UnityHub` Unity Hub 3.3.7 登录并激活 Personal License 后恢复），IL2CPP 构建/运行已实测通过
 - 仓库侧事实（本次已核，非实测游戏行为）：
-  - `spikes/UnityUwrSpike/` 只提交资产（2 脚本 + 2 README），Unity 工程由人手动创建——步骤见 `spikes/UnityUwrSpike/README.md`「Unity 工程创建」节
-  - `Assets/Scripts/` 下**无 `.asmdef`、无 `.meta`** → 两脚本编译进 **`Assembly-CSharp`**，brief 的 `<assembly fullname="Assembly-CSharp">` 与之对齐，无需改
+  - `spikes/UnityUwrSpike/` 只提交资产（4 脚本 + 2 README），Unity 工程建在仓库外、由人手动创建——步骤见 `spikes/UnityUwrSpike/README.md`「Unity 工程创建」节
+  - `Assets/Scripts/` 下**无 `.asmdef`、无 `.meta`** → 各脚本编译进 **`Assembly-CSharp`**，brief 的 `<assembly fullname="Assembly-CSharp">` 与之对齐，无需改
   - `Assets/link.xml` 位于 Assets 根：Unity 构建时自动读取 Assets 下任意 `link.xml`；它只在构建管线里生效，对 Editor Play 无作用（见观察 1）
 - 执行者需满足：Unity 2021.3 LTS（含 Windows IL2CPP 工具链）+ Task 3 的 Unity 工程已建好 + 本地 SSE 服务（Task 2）可达
 
@@ -74,7 +74,7 @@ dotnet run --project spikes/SseTestServer -c Release    # http://127.0.0.1:5199/
 1. **link.xml 的作用域是构建管线，不是 Editor**：Editor Play 不走 managed stripping，Editor 里 `ReceiveData` 正常回调**不能证明** link.xml 有效——唯一有效证据是 IL2CPP 构建产物里实跑。
 2. **Editor/Mono 绿只是基线不是结论**：本矩阵把 Mono 格单独列出就是防止"Editor 里好好的"被当成 IL2CPP 证据。brief 的降级路径写死：IL2CPP 失败 → 记错误原文 → "仅 Mono"，届时 Task 8 汇总表 S0-5 格照填"仅 Mono"。
 3. **对照格是本矩阵的价值所在**：只跑"有 link.xml"一格，绿了也归因不出是 link.xml 的功劳还是默认剥离等级本来就不剥；有/无各 Build 一次才能把结论钉死。Build 两次的成本远小于事后争论。
-4. **ws 侧 IL2CPP 与本任务不同轴**：`System.Net.WebSockets` 在 IL2CPP 下能否编译/连是另一问（Task 5 矩阵 C 表已挂 pending）；不要拿本任务的 link.xml 结果外推到 ws。
+4. **ws 侧 IL2CPP 与本任务不同轴**：`System.Net.WebSockets` 在 IL2CPP 下能否编译/连是另一问（Task 5 矩阵 C 表已回填：三版本 IL2CPP 本地 ws 通过）；不要拿本任务的 link.xml 结果外推到 ws。
 5. **程序集名绑定**：本 link.xml 写死 `Assembly-CSharp`，依赖"`Assets/Scripts/` 无 asmdef"这一仓库事实；任何人加 asmdef 就必须同步改 fullname——已在资产节立警告。
 
 ## 待办（Unity 手动部分，brief Step 7.2/7.3）
@@ -87,4 +87,4 @@ dotnet run --project spikes/SseTestServer -c Release    # http://127.0.0.1:5199/
 - [x] 2021.3.45f1：IL2CPP 下本地 ws 通过
 - [x] 6000.6.8f1：IL2CPP 模块安装、构建/运行通过
 - [x] 6000.3.28f1：许可证恢复、IL2CPP 构建/运行通过
-- [ ] 每格回填本矩阵；IL2CPP 失败 → 记错误 + 降级"仅 Mono"并在 Task 8 汇总注明
+- [x] 每格回填本矩阵（矩阵已填满；IL2CPP 三版本全部通过，无需"仅 Mono"降级）

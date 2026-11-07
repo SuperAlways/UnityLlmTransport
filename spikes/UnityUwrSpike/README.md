@@ -3,7 +3,7 @@
 回答一个问题：**Unity 2021.3 的 `UnityWebRequest` + `DownloadHandlerScript` 能不能拿到逐块流式回包？**
 （首块时间 vs 总时长、`ReceiveData` 回调次数、Abort 行为、错误分类。）
 
-本目录**只提交资产**（两个脚本 + 本 README），不提交 Unity 工程。Unity 工程由人手动创建（见下）。
+本目录**只提交资产**（脚本 + link.xml + 本 README），不提交 Unity 工程。Unity 工程建在仓库外、由人手动创建（见下）。
 
 ## 资产
 
@@ -11,8 +11,10 @@
 |---|---|
 | `Assets/Scripts/StreamingDownloadHandler.cs` | `DownloadHandlerScript` 子类，记录 `ReceiveData` 每次回调的时间戳（相对启动）与字节数 |
 | `Assets/Scripts/UwrSpike.cs` | `MonoBehaviour` runner：POST `{}` + `Accept: text/event-stream` 到本地 SSE 服务，结束时把 `result`/`code`/`error`/回调数/逐块时间打到 Console；`AbortNow()` 可在运行中调用 |
+| `Assets/Scripts/Phase0Runner.cs` | 三版本自动矩阵 runner：UWR/SSE/Abort/gzip + WS（本地/错误/Close/Abort/远程 wss）+ TLS 三格，写 `phase0-results.txt` 后自动退出 |
+| `Assets/Editor/Phase0Build.cs` | batchmode 构建入口：创建场景 + `BuildMono` / `BuildIl2cpp` |
 
-代码与 brief（`.superpowers/sdd/phase0-task-3-brief.md` Step 3.1/3.2）逐字一致。
+`StreamingDownloadHandler.cs` / `UwrSpike.cs` 与 brief（`.superpowers/sdd/phase0-task-3-brief.md` Step 3.1/3.2）逐字一致；`Phase0Runner.cs` / `Phase0Build.cs` 来自多版本扩展轮（SOP §2，先在仓库外工程 `D:\UnitySpikes\Uwr2021` 实跑验证后回收入库，未改逻辑）。
 
 ## 前置：本地 SSE 测试服务（Task 2 产物）
 
@@ -59,4 +61,7 @@ Unity Hub 不允许在非空目录建工程，所以先把资产挪出去再建�
 
 ## 实测数据落盘
 
-跑完后把实测数据写入 `docs/spike/uwr-streaming.md`（brief Step 3.4），再提交。**本目录当前不含实测数据**——Unity 手动执行尚未进行。
+实测结果已写入 `docs/spike/uwr-streaming.md`（brief Step 3.4）与 `docs/spike/websocket-matrix.md` / `il2cpp.md` / `proxy-tls-matrix.md`；
+原始运行结果留档在 `docs/spike/evidence/<版本>-results.txt`。
+
+`Phase0Runner.cs` / `Phase0Build.cs` 已随仓库版本化（`Assets/Scripts/`、`Assets/Editor/`）：Unity 工程建在仓库外（如 `D:\UnitySpikes\Uwr2021`，Hub 不允许在非空目录建工程），建好后把这两个文件连同 `Assets/Scripts/`、`Assets/link.xml` 拷进去即可跑全自动矩阵（SOP 见 `docs/SOP/Unity多版本通讯测试-SOP-2026-11-06.md`）。

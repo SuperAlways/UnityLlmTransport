@@ -52,7 +52,7 @@ foreach (var (caseName, handler) in cases)
             var body = await resp.Content.ReadAsStringAsync();
             sw.Stop();
             Console.WriteLine(
-                $"{caseName} | {urlName} | HTTP {(int)resp.StatusCode} | {sw.ElapsedMilliseconds}ms | bytes={body.Length}");
+                $"{caseName} | {urlName} | HTTP {(int)resp.StatusCode} | {sw.ElapsedMilliseconds}ms | chars={body.Length}");
         }
         catch (Exception e)
         {

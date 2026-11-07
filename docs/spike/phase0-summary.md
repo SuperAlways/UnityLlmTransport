@@ -26,13 +26,15 @@
 
 三版本 × Mono/IL2CPP 全部：
 
-- `/sse`：callbacks=6，首块 0.011–0.050s，总时长 0.57–0.63s；
+- `/sse`：callbacks=6，首块 ~0.01–0.05s、总时长 ~0.6s（跨多轮运行的范围；逐轮数字见 `uwr-streaming.md` §1.2 与 `docs/spike/evidence/` 原始结果）；
 - `/sse-error`：500 + body 可读；
 - `/sse-gzip`：仍逐块回调（时序与普通 SSE 一致）；
 - Abort：回调 2→2，`Request aborted`；
 - 本地 HTTP / 远程 HTTPS / 自签 + certificateHandler 均通过。
 
 → **Phase 2 使用 UWR + `DownloadHandlerScript` 作为 Unity 主路径。**
+
+桥接（S0-6）：`ReceiveData` 字节块入 `Channel<byte[]>`，`ChannelReadStream`（`spikes/ChannelBridge`）包成 `Stream` 供 vendored SseParser 逐事件消费——单测 1/1 通过（byte-by-byte 分片可拼回）；**该 spike 未测取消/Abort 与无死锁判据**，Phase 2 必须补（`docs/spike/channel-stream.md`）。
 
 ### 2.2 SseParser vendor：通过
 
@@ -79,6 +81,7 @@
 | WebGL | M2 |
 | HTTP/2 行为 | 未单独测；6.3+ UWR 可能默认，但本测试服务是 HTTP/1.1；Phase 3 用真实端点补 |
 | 无 link.xml 对照 | 只在 2021.3 跑；6.3/6.6 默认沿用 link.xml，不再重复破坏性对照 |
+| ChannelReadStream 取消/Abort 与无死锁判据 | S0-6 spike 未测；Phase 2 adapter 必须补（见 `docs/spike/channel-stream.md`） |
 
 ---
 
@@ -101,7 +104,8 @@
 3. UWR adapter 统一 `timeout=0` + 首字节/空闲看门狗；
 4. gzip 解码策略在 Phase 2 补测后再定（先按 UWR 原始字节处理）；
 5. `TransportCapabilities`: 2021.3 `Http2=false`；6.3/6.6 待真实端点验证后再设 true；
-6. 显式代理只通过 HttpClient；UWR 能力声明 `ExplicitProxy=false`。
+6. 显式代理只通过 HttpClient；UWR 能力声明 `ExplicitProxy=false`；
+7. UWR→parser 桥接按 `Channel<byte[]>` + `ChannelReadStream`（S0-6 已验证可编可消费）；Phase 2 实现时补取消/Abort 与无死锁测试，并修其三条已知限制（TryRead 竞争伪 EOF、同步 `Read` 阻塞、`Dispose` no-op，见 `docs/spike/channel-stream.md`）。
 
 ---
 

@@ -69,14 +69,26 @@
 
 ---
 
-## 2. 未测 / 阻塞
+## 2. 曾阻塞项的解决记录 / 仍后置项
+
+早前列为"未测/阻塞"的四项均已解除并实测（2026-11-06/07），解决方式留档免重查：
+
+| 项 | 曾的状态 | 解决方式 → 结果 |
+|---|---|---|
+| 6000.3.28f1（6.3 LTS） | ❌ `No valid Unity Editor license found`（exit 198） | 在 `D:\tools\UnityHub`（Unity Hub 3.3.7）登录并激活 Personal License 后恢复 → Mono/IL2CPP 全通过（§1.2） |
+| IL2CPP（2021.3） | ⏳ 等 VS C++ 工作负载 | VS 2026 `Desktop development with C++`（MSVC 14.44/14.51 + Windows SDK）就绪后构建/运行通过（§1.1） |
+| IL2CPP（6.6） | ⏳ 缺 `Windows Build Support (IL2CPP)` 模块 | Hub 在线模块 404（中国 CDN），改本地独立安装包手动安装 + UAC 批准 → 构建/运行通过（§1.2） |
+| 远程 wss / TLS / ws Close/Abort | ⏳ 未测 | `Phase0Runner` 扩展后三版本 Mono/IL2CPP 全部实测通过（§1.3；远程 wss 走 Postman echo） |
+
+仍后置（不阻塞 go/no-go）：
 
 | 项 | 状态 |
 |---|---|
-| 6000.3.28f1（6.3 LTS） | ❌ Unity 启动报 `No valid Unity Editor license found`（exit 198）；需在 Hub 给 6.3 激活许可证后重跑 |
-| IL2CPP（2021.3 / 6.6） | ⏳ 等待 VS 2022 Build Tools C++ 工作负载；6.6 还缺 Windows Build Support (IL2CPP) 模块 |
-| 显式代理 / 自签 TLS | ⏳ UWR 无显式代理 API；需关系统代理/换 HttpClient 再测 |
-| 远程 wss | ⏳ 未测（需稳定公共 echo 或自建 wss） |
+| gzip 内容是否已解压 | Phase 1/2 在 adapter 里验证；当前只证明逐块时序 |
+| 系统代理关闭对照 | 可选，留 Phase 3 |
+| WebGL | M2 |
+| HTTP/2 行为 | 未单独测；6.3+ UWR 可能默认，但本测试服务是 HTTP/1.1；Phase 3 用真实端点补 |
+| 无 link.xml 对照 | 只在 2021.3 跑；6.3/6.6 默认沿用 link.xml，不再重复破坏性对照 |
 
 ---
 
@@ -96,4 +108,6 @@ D:\Unity\Hub\Editor\2021.3.45f1\Editor\Unity.exe -batchmode -quit \
 D:\UnitySpikes\Builds\2021.3.45f1c2\mono\Phase0.exe -logFile D:\UnitySpikes\player-mono.log
 ```
 
-结果文件：`%USERPROFILE%\AppData\LocalLow\DefaultCompany\<Product>\phase0-results.txt`
+结果文件：`%USERPROFILE%\AppData\LocalLow\DefaultCompany\<Product>\phase0-results.txt`；
+原始留档见 `docs/spike/evidence/<版本>-results.txt`（2026-11-07 复跑的 Mono 一轮；IL2CPP 数字以 §1.1/1.2 为准）。
+`Phase0Runner.cs` / `Phase0Build.cs` 已版本化在 `spikes/UnityUwrSpike/Assets/`（Scripts / Editor）。

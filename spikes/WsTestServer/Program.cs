@@ -3,7 +3,7 @@
 // 行为: 每个连接收一条文本消息 → 回 "echo:<原文>" → 服务端主动 NormalClosure 关闭
 //
 // 与 brief 的差异（仅一处，实测驱动）:
-//   brief 原样代码在【客户端不完成 close 握手就断开】时，服务端 line 23 的
+//   brief 原样代码在【客户端不完成 close 握手就断开】时，服务端主循环里的
 //   ws.CloseAsync 抛未捕获 WebSocketException → 整个进程退出（.NET 10 实测两轮复现，
 //   两种签名: ①"The remote party closed the WebSocket connection without completing
 //   the close handshake." ②"An internal WebSocket error occurred ---> HttpListenerException(995)"）。

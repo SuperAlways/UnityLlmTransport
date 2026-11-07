@@ -9,7 +9,7 @@
 - 系统代理**开**（同 Task 4：WinINET `ProxyServer=127.0.0.1:7897`，`ProxyOverride` 含 `127.*;localhost;<local>`）
 - 服务端：`spikes/WsTestServer`（`HttpListener`，`ws://127.0.0.1:5200/ws/`，**免 URLACL 免提权直接可跑**，http.sys 内核监听 netstat 显示 PID 4 属正常）
 - 客户端（本矩阵实测侧）：仓库外临时 .NET 10 控制台 `ClientWebSocket` 探针（`%TEMP%\ws-echo-client`，一次性，不入仓库）
-- **Unity 2021.3 实机：未接线，本矩阵 Unity 侧格子全部 pending**
+- Unity 侧接线：`Phase0Runner`（三版本 Windows Player 自动跑）——Mono 与 IL2CPP 各实机一轮，C 表已按格回填
 
 ## 复现命令
 
@@ -43,10 +43,10 @@ curl -s -i --noproxy '*' http://127.0.0.1:5200/ws/   # 非 WebSocket 请求 → 
 
 | 格 | 结果 | 错误 | 证据 |
 |---|---|---|---|
-| B-1 服务端 brief Step 5.1 原样 × 客户端 abrupt dispose | **服务端进程崩溃退出** | `WebSocketException: The remote party closed the WebSocket connection without completing the close handshake.`（客户端已收到 Close 帧才断）或 `WebSocketException: An internal WebSocket error occurred. ---> HttpListenerException(995): 由于线程退出或应用程序请求，已中止 I/O 操作。`（echo 后握手在途即断） | 两种签名均抛在服务端 `ws.CloseAsync`（Program.cs line 23），顶层无捕获 → 整进程退出；之后任何连接 `curl exit=7`（http_code=000，连接拒绝）。**根因：`CloseAsync` 在等服务端 close-ack 时客户端直接 Dispose 掐线；brief Step 5.2 的客户端恰好每次都这么干** |
+| B-1 服务端 brief Step 5.1 原样 × 客户端 abrupt dispose | **服务端进程崩溃退出** | `WebSocketException: The remote party closed the WebSocket connection without completing the close handshake.`（客户端已收到 Close 帧才断）或 `WebSocketException: An internal WebSocket error occurred. ---> HttpListenerException(995): 由于线程退出或应用程序请求，已中止 I/O 操作。`（echo 后握手在途即断） | 两种签名均抛在服务端 `ws.CloseAsync`（brief 原样版主循环里那一行，即本仓库提交版 try/catch 所包住的调用），顶层无捕获 → 整进程退出；之后任何连接 `curl exit=7`（http_code=000，连接拒绝）。**根因：`CloseAsync` 在等服务端 close-ack 时客户端直接 Dispose 掐线；brief Step 5.2 的客户端恰好每次都这么干** |
 | B-2 提交版修复 | per-connection `try/catch` 吞坏连接，服务存活 | – | A 表第 5 格：两连 abrupt 后服务照常服务；verbatim 版崩溃证据完整保留于本节 + Task 5 报告 |
 
-### C. Unity `ClientWebSocket`（本地已实测；远程/其余 pending）
+### C. Unity `ClientWebSocket`（本地/远程/Close/Abort 已实测；仅关代理与 WebGL pending）
 
 | 栈 | 网络 | 代理 | TLS | 结果 | 错误 | 证据 |
 |---|---|---|---|---|---|---|

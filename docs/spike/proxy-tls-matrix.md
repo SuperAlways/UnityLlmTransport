@@ -31,9 +31,9 @@ dotnet run --project spikes/ProxyTlsSpike -- https://www.google.com/
 
 | 栈 | 网络 | 代理 | TLS | 结果 | 错误 | 证据 |
 |---|---|---|---|---|---|---|
-| HttpClient | HTTP `http://127.0.0.1:5199/sse` | no-proxy（直连） | 无（明文） | **200** | – | 3 轮全绿，≈547-596ms，249B（完整 [DONE] 流） |
+| HttpClient | HTTP `http://127.0.0.1:5199/sse` | no-proxy（直连） | 无（明文） | **200** | – | 3 轮全绿，≈547-596ms，249 chars（完整 [DONE] 流；探针旧版误标 bytes，实为 UTF-16 char 数） |
 | HttpClient | HTTP 本地 | system-proxy（WinINET `127.*` bypass → 实为直连） | 无 | **200** | – | `GetProxy(5199) -> (direct)` 解析日志 + 3 轮 200 |
-| HttpClient | HTTP 本地 | explicit-proxy `WebProxy(7897)` | 无 | **200** | – | 3 轮 200（7897 对 loopback 建立 CONNECT 隧道后转发） |
+| HttpClient | HTTP 本地 | explicit-proxy `WebProxy(7897)` | 无 | **200** | – | 3 轮 200（推定 7897 对 loopback 建立 CONNECT 隧道后转发——推断自 200 结果，未抓包看隧道内部） |
 | HttpClient | HTTPS `https://example.com/` | no-proxy（直连） | 系统信任 CA | **200** | – | 3 轮 200 ≈670-840ms；curl 直连 200 交叉印证 |
 | HttpClient | HTTPS example.com | system-proxy（解析出 `7897`） | 系统信任 CA | **200** | – | `GetProxy(example.com) -> http://127.0.0.1:7897/` + 3 轮 200 |
 | HttpClient | HTTPS example.com | explicit-proxy 7897 | 系统信任 CA | **200** | – | 3 轮 200 ≈189-1500ms；curl `-x 7897` 200 交叉印证 |

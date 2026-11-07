@@ -1,0 +1,15 @@
+unity_version=6000.3.28f1
+uwr|sse|result=Success|code=200|error=|callbacks=6|first=0.025|elapsed=0.574|body=
+uwr|sse-error|result=ProtocolError|code=500|error=HTTP/1.1 500 Internal Server Error|callbacks=-1|first=-1.000|elapsed=0.015|body={"error":"boom"}
+uwr|wrong-port|result=ProtocolError|code=502|error=HTTP/1.1 502 Bad Gateway|callbacks=0|first=-1.000|elapsed=3.450|body=
+uwr|sse-gzip|result=Success|code=200|error=|callbacks=6|first=0.016|elapsed=0.583|body=
+uwr|abort|result=ConnectionError|code=200|error=Request aborted|at_abort=2|after_1s=2|callbacks=2
+ws|ws-local|type=Text|bytes=10|text=echo:hello
+ws|ws-wrong-port|error=WebSocketException: Unable to connect to the remote server
+ws|ws-non-ws|error=WebSocketException: Unable to connect to the remote server
+ws|ws-close|echo=echo:hello|closeStatus=NormalClosure|desc=bye|finalState=CloseSent
+ws|ws-abort|abortedState=Aborted
+ws|ws-remote|type=Text|bytes=5|text=hello
+tls|tls-normal|result=Success|code=200|error=|elapsed=1.483
+tls|tls-selfsigned-accept|result=Success|code=200|error=|elapsed=2.100
+tls|tls-selfsigned-default|result=ConnectionError|code=0|error=SSL CA certificate error|elapsed=1.367
