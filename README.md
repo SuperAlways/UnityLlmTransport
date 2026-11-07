@@ -198,7 +198,7 @@ UnityLlmTransport/
 1. Unity 前端直连是首要形态；.NET 8 后端不作为本组件目标（已有 HttpClient/pi.net）——**已定**；
 2. 传输实现顺序：UWR（Phase 2 已过 2021.3/6.3/6.6 + 2022.3.62f3c1）→ HttpClient（Phase 3）→ RawTcp/WebSocket（Phase 5）——**已定**；
 3. WebGL 是否进 M1：**M2 再做**；
-4. 认证范围：API Key 先行，OAuth/SigV4 的接口形状在 Phase 4 补；
+4. 认证范围：API Key/OAuth 注入与 Signer Finalizer 的传输侧形状已在 Phase 4 落地；SigV4/ADC/Azure 算法由消费方实现——**已定**；
 5. 重试策略归属：传输层只做分类；策略在 provider adapter（PiUnityAgent S4）——**已定**；
 6. 独立 git 仓库：**已独立**；NuGet/UPM 包名与发布形态留 Phase 6；
 7. PiUnityAgent 集成：**B 方案**（PiUnityAgent 自有 Fetch 端口；适配器在 PiUnityAgent 侧维护）——**已定**（2026-11-07）。
