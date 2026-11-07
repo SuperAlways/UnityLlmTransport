@@ -1,0 +1,9 @@
+PHASE2 unity_version=2022.3.62f3c1
+PHASE2 main_thread=1
+PHASE2 U1_stream|OK|status=200|open_ms=145|items=6|first_ms=160|total_ms=703|data={"choices":[{"delta":{"content":"你"}}]}{"choices":[{"delta":{"content":"好"}}]}{"choices":[{"delta":{"content":"，"}}]}{"choices":[{"delta":{"content":"世"}}]}{"choices":[{"delta":{"content":"界"}}]}[DONE]
+PHASE2 U3_cancel|OK|cancel_error=TransportException kind=Cancelled code=- msg=Response aborted (Cancelled).
+PHASE2 U5_overflow|OK|kind=Overflow|msg=Response exceeded ChunkQueue capacity of 65536 bytes.
+PHASE2 U6_error_body|OK|status=500|body={"error":"boom"}
+PHASE2 U8_gzip|OK|items=6|first_ms=82|data={"choices":[{"delta":{"content":"你"}}]}{"choices":[{"delta":{"content":"好"}}]}{"choices":[{"delta":{"content":"，"}}]}{"choices":[{"delta":{"content":"世"}}]}{"choices":[{"delta":{"content":"界"}}]}[DONE]
+PHASE2 U9_threads|OK|main=1|parse=11|observer=7|chunks=8
+PHASE2 U11_abort_residual|OK|chunks_at_abort=1|after_1s=1

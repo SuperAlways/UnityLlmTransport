@@ -1,6 +1,6 @@
 # UnityLlmTransport
 
-> **状态**：Phase 0/1/2 已完成（2021.3/6.3/6.6 + 2022.3.62f3c1 主基线；2022.3 UWR Mono/IL2CPP U1–U11 15/15）；Phase 3 收尾中（HttpClient 四版本 Mono H1–H9，2022.3 待补测）；Phase 4 待开工。
+> **状态**：Phase 0/1/2/3 已完成（2021.3/6.3/6.6 + 2022.3.62f3c1 主基线；Phase 3 HttpClient 四版本 Mono H1–H9 全过，共享 TimeoutTransport 修复后 2022.3 UWR 短回归 Mono 7/7 + IL2CPP 3/3）；Phase 4 待开工。
 > **定位**：Unity 运行时（AI mod 与原生 LLM/Agent 驱动的游戏）的**独立通讯底座**——在 Unity + netstandard2.1 条件下，承载 pi-ai / pi-agent-core 的**全部通讯需求**。PiUnityAgent 是首个消费者（通过其自有 Fetch 端口 + Host 适配器），但不是唯一消费者。
 
 ---
@@ -187,7 +187,7 @@ UnityLlmTransport/
     UnityLlmTransport.Hosts.Unity/
 ```
 
-`src/` 与 `tests/` 已随 Phase 1/2/3 落地：`UnityLlmTransport.Abstractions`（端口/DTO/装饰器/Mock）、`UnityLlmTransport.Sse`（vendor SSE 解析器）、`UnityLlmTransport.HttpClient`（传输/会话/请求构建/handler 映射/错误分类，netstandard2.1 零 UnityEngine）、`UnityLlmTransport.UnityWebRequest.Core`（队列/流/分类/请求计划，纯逻辑）、`tests/UnityLlmTransport.Tests`、`tests/UnityLlmTransport.UnityWebRequest.Tests`、`tests/UnityLlmTransport.HttpClient.Tests`（含 `Phase3TestSupport` 进程内测试服务）。`unity/` 为 Phase 2/3 的 Unity 侧源码（适配层 + 协程 Host + 两个 harness，经 `scripts/assemble-phase2-unity.sh` / `assemble-phase3-unity.sh` 装配进 Unity 工程）；Phase 2 的 2021.3/6.3/6.6 + 2022.3 主基线 Mono/IL2CPP 结果见 `docs/spike/phase2-results.md`，HttpClient 结果见 `docs/spike/phase3-results.md`（2022.3 主基线补测 pending）。
+`src/` 与 `tests/` 已随 Phase 1/2/3 落地：`UnityLlmTransport.Abstractions`（端口/DTO/装饰器/Mock）、`UnityLlmTransport.Sse`（vendor SSE 解析器）、`UnityLlmTransport.HttpClient`（传输/会话/请求构建/handler 映射/错误分类，netstandard2.1 零 UnityEngine）、`UnityLlmTransport.UnityWebRequest.Core`（队列/流/分类/请求计划，纯逻辑）、`tests/UnityLlmTransport.Tests`、`tests/UnityLlmTransport.UnityWebRequest.Tests`、`tests/UnityLlmTransport.HttpClient.Tests`（含 `Phase3TestSupport` 进程内测试服务）。`unity/` 为 Phase 2/3 的 Unity 侧源码（适配层 + 协程 Host + 两个 harness，经 `scripts/assemble-phase2-unity.sh` / `assemble-phase3-unity.sh` 装配进 Unity 工程）；Phase 2 的 2021.3/6.3/6.6 + 2022.3 主基线 Mono/IL2CPP 结果见 `docs/spike/phase2-results.md`，HttpClient 四版本 Mono + 共享修复的 UWR 短回归结果见 `docs/spike/phase3-results.md`。
 
 ---
 
