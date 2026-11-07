@@ -654,6 +654,7 @@ namespace UnityLlmTransport.Tests
                 var result = await socket.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
                 if (result.MessageType == WebSocketMessageType.Close)
                 {
+                    await socket.CloseAsync(WebSocketCloseStatus.NormalClosure, "bye", CancellationToken.None);
                     return;
                 }
                 if (result.MessageType == WebSocketMessageType.Text)
