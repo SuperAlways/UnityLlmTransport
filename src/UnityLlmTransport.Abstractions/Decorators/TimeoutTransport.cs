@@ -39,13 +39,19 @@ namespace UnityLlmTransport
             public TimedSession(ITransportSession inner, TransportOptions options)
             {
                 _inner = inner;
-                _hasFirstByteBudget = options.FirstByteTimeout.HasValue;
+                _hasFirstByteBudget = IsActiveBudget(options.FirstByteTimeout);
                 _firstByteDeadline = _hasFirstByteBudget
                     ? DateTimeOffset.UtcNow + options.FirstByteTimeout!.Value
                     : DateTimeOffset.MaxValue;
-                _idleTimeout = options.IdleTimeout ?? Timeout.InfiniteTimeSpan;
+                _idleTimeout = IsActiveBudget(options.IdleTimeout) ? options.IdleTimeout!.Value : Timeout.InfiniteTimeSpan;
                 _maxResponseBytes = options.MaxResponseBytes ?? -1;
                 _body = new TimedBodyStream(this, inner.Body);
+            }
+
+            /// <summary>哨兵值（Timeout.InfiniteTimeSpan=-1ms）与其它非正值不构成真实预算，视为未配置。</summary>
+            private static bool IsActiveBudget(TimeSpan? value)
+            {
+                return value.HasValue && value.Value > TimeSpan.Zero;
             }
 
             public int StatusCode => _inner.StatusCode;

@@ -3,7 +3,10 @@ using System.Collections.Generic;
 
 namespace UnityLlmTransport
 {
-    /// <summary>按 Kind 精确注册；Auto 按 FallbackPolicy 顺序取首个已注册且能力满足的传输。</summary>
+    /// <summary>
+    /// 按 Kind 精确注册；Auto 按 <see cref="TransportFallbackPolicy"/> 的顺序取第一个已注册的候选，
+    /// 不做静默降级——未注册的候选直接跳过，已注册但能力不满足的候选抛 <see cref="TransportException"/>（Unsupported）。
+    /// </summary>
     public sealed class DefaultTransportSelector : ITransportSelector
     {
         private readonly IReadOnlyDictionary<TransportKind, IStreamingHttpTransport> _httpTransports;

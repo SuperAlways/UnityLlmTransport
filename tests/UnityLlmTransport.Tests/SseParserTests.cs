@@ -57,5 +57,35 @@ namespace UnityLlmTransport.Tests
 
             Assert.Empty(items);
         }
+
+        [Fact]
+        public async Task Parser_Is_Directly_Await_Foreach_Enumerable()
+        {
+            using var stream = new MemoryStream(Encoding.UTF8.GetBytes("data: a\n\ndata: b\n\n"));
+            var items = new List<SseItem<string>>();
+            await foreach (var item in SseParser.Create(stream))
+            {
+                items.Add(item);
+            }
+
+            Assert.Equal(2, items.Count);
+            Assert.Equal("a", items[0].Data);
+            Assert.Equal("b", items[1].Data);
+        }
+
+        [Fact]
+        public void Parser_Is_Directly_Sync_Enumerable()
+        {
+            using var stream = new MemoryStream(Encoding.UTF8.GetBytes("data: a\n\ndata: b\n\n"));
+            var items = new List<SseItem<string>>();
+            foreach (var item in SseParser.Create(stream))
+            {
+                items.Add(item);
+            }
+
+            Assert.Equal(2, items.Count);
+            Assert.Equal("a", items[0].Data);
+            Assert.Equal("b", items[1].Data);
+        }
     }
 }

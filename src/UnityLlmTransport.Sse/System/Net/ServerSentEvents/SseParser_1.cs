@@ -16,7 +16,7 @@ namespace UnityLlmTransport.Sse
 {
     /// <summary>Provides a parser for server-sent events information.</summary>
     /// <typeparam name="T">Specifies the type of data parsed from an event.</typeparam>
-    public sealed class SseParser<T>
+    public sealed class SseParser<T> : IEnumerable<SseItem<T>>, IAsyncEnumerable<SseItem<T>>
     {
         // For reference:
         // Specification: https://html.spec.whatwg.org/multipage/server-sent-events.html#server-sent-events
@@ -190,6 +190,17 @@ namespace UnityLlmTransport.Sse
                 _dataBuffer.Dispose();
             }
         }
+
+        /// <summary>Gets an enumerator of the server-sent events from this parser.</summary>
+        IEnumerator<SseItem<T>> IEnumerable<SseItem<T>>.GetEnumerator() => Enumerate().GetEnumerator();
+
+        /// <summary>Gets an enumerator of the server-sent events from this parser.</summary>
+        IEnumerator IEnumerable.GetEnumerator() => Enumerate().GetEnumerator();
+
+        /// <summary>Gets an asynchronous enumerator of the server-sent events from this parser.</summary>
+        /// <param name="cancellationToken">The cancellation token to use to cancel the enumeration.</param>
+        IAsyncEnumerator<SseItem<T>> IAsyncEnumerable<SseItem<T>>.GetAsyncEnumerator(CancellationToken cancellationToken) =>
+            EnumerateAsync(cancellationToken).GetAsyncEnumerator(cancellationToken);
 
         /// <summary>Tries to process a complete line from data already read from the stream.</summary>
         /// <param name="sseItem">The parsed item if processing the line dispatched an event; otherwise, <see langword="null"/>.</param>

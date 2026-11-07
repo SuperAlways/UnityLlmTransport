@@ -63,6 +63,44 @@ namespace UnityLlmTransport.Tests
         }
 
         [Fact]
+        public async Task Infinite_FirstByteTimeout_Does_Not_Timeout()
+        {
+            var inner = new MockTransport(_ => new MockResponse
+            {
+                Chunks = new[] { Bytes("ok") },
+                ChunkDelay = TimeSpan.FromMilliseconds(100)
+            });
+            var transport = new TimeoutTransport(inner);
+            var options = new TransportOptions { FirstByteTimeout = Timeout.InfiniteTimeSpan };
+
+            var session = await transport.OpenAsync(Request(), options, CancellationToken.None);
+            var buffer = new byte[16];
+            int read = await session.Body.ReadAsync(buffer.AsMemory(), CancellationToken.None);
+
+            Assert.True(read > 0);
+        }
+
+        [Fact]
+        public async Task Negative_IdleTimeout_Is_Treated_As_Disabled()
+        {
+            var inner = new MockTransport(_ => new MockResponse
+            {
+                Chunks = new[] { Bytes("a"), Bytes("b") },
+                ChunkDelay = TimeSpan.FromMilliseconds(30)
+            });
+            var transport = new TimeoutTransport(inner);
+            var options = new TransportOptions { IdleTimeout = TimeSpan.FromMilliseconds(-2) };
+
+            var session = await transport.OpenAsync(Request(), options, CancellationToken.None);
+            var buffer = new byte[16];
+            int first = await session.Body.ReadAsync(buffer.AsMemory(), CancellationToken.None);
+            Assert.Equal(1, first);
+
+            int second = await session.Body.ReadAsync(buffer.AsMemory(), CancellationToken.None);
+            Assert.Equal(1, second);
+        }
+
+        [Fact]
         public async Task MaxResponseBytes_Overflow_Throws()
         {
             var inner = new MockTransport(_ => new MockResponse
