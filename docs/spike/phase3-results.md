@@ -2,7 +2,7 @@
 
 > 日期：2026-11-07。环境：Windows 11 + Unity `2022.3.62f3c1`（测试主基线） / `2021.3.45f1`（最低边界） / `6000.3.28f1`（6.3） / `6000.6.8f1`（6.6），各出 Mono player 一个。
 > 构建命令见 `unity/Phase3Harness/README.md`；测试服务 = `spikes/Phase3TestServer`（HTTP 5201 / HTTPS 5233 / 显式代理 5234，全部本地自签/回环，无外网依赖）。
-> 原始日志：`D:/UnitySpikes/phase3-<ver>-mono-player.log`；证据副本在 `docs/spike/evidence/phase3/`（每组 2 行头 + 12 行 `|OK|`）。
+> 原始日志：`D:/UnitySpikes/phase3-<ver>-mono-player.log`（2022.3 为 `phase3-2022-mono-player.log`）；证据副本在 `docs/spike/evidence/phase3/`（每组 2 行头 + 12 行 `|OK|`）。
 > ⚠️ 2021.3 的构建目录是 `Builds/Phase3/2021.3.45f1c2/`（`Application.unityVersion` 带 c2 后缀，其余版本与编辑器版本号一致；2022.3 为 `2022.3.62f3c1`）。
 
 **总裁决：四版本 × Mono = 4 组全量场景，每组 12/12 `|OK|`（H1–H9），无一处 `|FAIL|`。本阶段只跑 Mono（IL2CPP 不声明）。**
@@ -46,7 +46,7 @@
 
 ## 原始结果行（证据，逐字）
 
-> 证据入库：四组逐字行已提交至 `docs/spike/evidence/phase3/<ver>-mono-results.txt`（各行前缀 `PHASE3 ` 为日志 tag）。构建日志 `D:/UnitySpikes/phase3-<ver>-mono.log` 判据行 `PHASE3_BUILD mono Succeeded errors=0`。
+> 证据入库：四组逐字行已提交至 `docs/spike/evidence/phase3/<ver>-mono-results.txt`（各行前缀 `PHASE3 ` 为日志 tag）。构建日志 `D:/UnitySpikes/phase3-<ver>-mono.log`（2022.3 为 `phase3-2022-mono.log`）判据行 `PHASE3_BUILD mono Succeeded errors=0`。
 
 ### Mono · 2022.3.62f3c1（测试主基线）
 

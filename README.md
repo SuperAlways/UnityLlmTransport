@@ -1,6 +1,6 @@
 # UnityLlmTransport
 
-> **状态**：Phase 0/1/2/3 已完成（2021.3/6.3/6.6 + 2022.3.62f3c1 主基线；Phase 3 HttpClient 四版本 Mono H1–H9 全过，共享 TimeoutTransport 修复后 2022.3 UWR 短回归 Mono 7/7 + IL2CPP 3/3）；Phase 4 待开工。
+> **状态**：Phase 0/1/2/3 已完成（2021.3/6.3/6.6 + 2022.3.62f3c1 主基线；Phase 3 HttpClient 四版本 Mono H1–H9 全过，共享 TimeoutTransport 修复后 2022.3 UWR 短回归 Mono 7/7 + IL2CPP 3/3；Phase 2 的 2022.3 UWR 结果见 `docs/spike/phase2-results.md`）；Phase 4 待开工。
 > **定位**：Unity 运行时（AI mod 与原生 LLM/Agent 驱动的游戏）的**独立通讯底座**——在 Unity + netstandard2.1 条件下，承载 pi-ai / pi-agent-core 的**全部通讯需求**。PiUnityAgent 是首个消费者（通过其自有 Fetch 端口 + Host 适配器），但不是唯一消费者。
 
 ---
