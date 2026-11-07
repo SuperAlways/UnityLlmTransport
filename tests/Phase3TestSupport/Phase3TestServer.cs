@@ -216,6 +216,9 @@ public sealed class Phase3TestServer
             if (path == "/slow-first")
             {
                 await context.Response.StartAsync();
+                // StartAsync 仅标记响应开始，不保证头部已刷到网络；显式 Flush 让客户端
+                // 在 OpenAsync（ResponseHeadersRead）时即拿到响应头，500ms 延迟留给读侧。
+                await context.Response.Body.FlushAsync();
                 await Task.Delay(500);
             }
 
