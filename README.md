@@ -1,6 +1,6 @@
 # UnityLlmTransport
 
-> **状态**：Phase 0/1/2 已完成（2026-11-07）；Phase 3 待开工。
+> **状态**：Phase 0/1/2/3 已完成（2026-11-07）；Phase 4 待开工。
 > **定位**：Unity 运行时（AI mod 与原生 LLM/Agent 驱动的游戏）的**独立通讯底座**——在 Unity + netstandard2.1 条件下，承载 pi-ai / pi-agent-core 的**全部通讯需求**。PiUnityAgent 是首个消费者，但不是唯一消费者。
 
 ---
@@ -154,24 +154,30 @@ UnityLlmTransport/
     spike/
   scripts/
     assemble-phase2-unity.sh
+    assemble-phase3-unity.sh
   spikes/
     SseTestServer/                   # UWR harness 的本地 SSE 服务（127.0.0.1:5199）
     WsTestServer/
     UnityUwrSpike/
+    Phase3TestServer/                # HttpClient harness 的测试服务（HTTP 5201 / HTTPS 5233 / 代理 5234）
   src/
     UnityLlmTransport.Abstractions/
     UnityLlmTransport.Sse/
+    UnityLlmTransport.HttpClient/             # HttpClient 实现（桌面/后端；零 UnityEngine）
     UnityLlmTransport.UnityWebRequest.Core/   # 纯桥接/分类，netstandard2.1，零 UnityEngine
   tests/
     UnityLlmTransport.Tests/
     UnityLlmTransport.UnityWebRequest.Tests/
+    UnityLlmTransport.HttpClient.Tests/       # 52 项：流式/取消/超时/代理/TLS/重定向/契约
+    Phase3TestSupport/                        # 进程内 Kestrel 测试服务（只进测试）
   unity/
     Phase2Harness/                   # Phase 2 Unity 侧 runner + build 脚本资产
+    Phase3Harness/                   # Phase 3 Unity Mono harness（H1–H9）
     UnityLlmTransport.UnityWebRequest/  # UWR 适配层 Runtime 源 + link.xml
     UnityLlmTransport.Hosts.Unity/
 ```
 
-`src/` 与 `tests/` 已随 Phase 1/2 落地：`UnityLlmTransport.Abstractions`（端口/DTO/装饰器/Mock）、`UnityLlmTransport.Sse`（vendor SSE 解析器）、`UnityLlmTransport.UnityWebRequest.Core`（队列/流/分类/请求计划，纯逻辑）、`tests/UnityLlmTransport.Tests`、`tests/UnityLlmTransport.UnityWebRequest.Tests`。`unity/` 为 Phase 2 的 Unity 侧源码（适配层 + 协程 Host + harness，经 `scripts/assemble-phase2-unity.sh` 装配进 Unity 工程）；三版本 Mono/IL2CPP 实机结果见 `docs/spike/phase2-results.md`。
+`src/` 与 `tests/` 已随 Phase 1/2/3 落地：`UnityLlmTransport.Abstractions`（端口/DTO/装饰器/Mock）、`UnityLlmTransport.Sse`（vendor SSE 解析器）、`UnityLlmTransport.HttpClient`（传输/会话/请求构建/handler 映射/错误分类，netstandard2.1 零 UnityEngine）、`UnityLlmTransport.UnityWebRequest.Core`（队列/流/分类/请求计划，纯逻辑）、`tests/UnityLlmTransport.Tests`、`tests/UnityLlmTransport.UnityWebRequest.Tests`、`tests/UnityLlmTransport.HttpClient.Tests`（含 `Phase3TestSupport` 进程内测试服务）。`unity/` 为 Phase 2/3 的 Unity 侧源码（适配层 + 协程 Host + 两个 harness，经 `scripts/assemble-phase2-unity.sh` / `assemble-phase3-unity.sh` 装配进 Unity 工程）；三版本 Mono/IL2CPP 实机结果见 `docs/spike/phase2-results.md`，HttpClient 三版本 Mono 结果见 `docs/spike/phase3-results.md`。
 
 ---
 
