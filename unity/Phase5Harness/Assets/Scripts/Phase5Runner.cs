@@ -81,92 +81,124 @@ public sealed class Phase5Runner : MonoBehaviour
     {
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15));
         var session = await _transport.ConnectAsync(Req(LocalWs), new WebSocketOptions(), cts.Token);
-        await session.SendAsync(
-            new WebSocketMessage(WebSocketMessageType.Text, Encoding.UTF8.GetBytes("hello"), true),
-            cts.Token);
-        var message = await ReceiveOne(session, cts.Token);
-        await session.DisposeAsync();
-        return "type=" + message.Type +
-               "|payload=" + Encoding.UTF8.GetString(message.Payload.ToArray());
+        try
+        {
+            await session.SendAsync(
+                new WebSocketMessage(WebSocketMessageType.Text, Encoding.UTF8.GetBytes("hello"), true),
+                cts.Token);
+            var message = await ReceiveOne(session, cts.Token);
+            return "type=" + message.Type +
+                   "|payload=" + Encoding.UTF8.GetString(message.Payload.ToArray());
+        }
+        finally
+        {
+            // 失败路径也必须释放会话：泄漏的活会话会把单线程 echo 服务卡死，
+            // 让后续场景连锁 Connect 失败（2026-11-07 IL2CPP 诊断教训）。
+            await session.DisposeAsync();
+        }
     }
 
     private async Task<string> ScenarioUtf8()
     {
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15));
         var session = await _transport.ConnectAsync(Req(LocalWs), new WebSocketOptions(), cts.Token);
-        await session.SendAsync(
-            new WebSocketMessage(WebSocketMessageType.Text, Encoding.UTF8.GetBytes("你好，世界"), true),
-            cts.Token);
-        var message = await ReceiveOne(session, cts.Token);
-        await session.DisposeAsync();
-        return "payload=" + Encoding.UTF8.GetString(message.Payload.ToArray());
+        try
+        {
+            await session.SendAsync(
+                new WebSocketMessage(WebSocketMessageType.Text, Encoding.UTF8.GetBytes("你好，世界"), true),
+                cts.Token);
+            var message = await ReceiveOne(session, cts.Token);
+            return "payload=" + Encoding.UTF8.GetString(message.Payload.ToArray());
+        }
+        finally
+        {
+            await session.DisposeAsync();
+        }
     }
 
     private async Task<string> ScenarioClose()
     {
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15));
         var session = await _transport.ConnectAsync(Req(LocalWs), new WebSocketOptions(), cts.Token);
-        await session.SendAsync(
-            new WebSocketMessage(WebSocketMessageType.Text, Encoding.UTF8.GetBytes("bye"), true),
-            cts.Token);
-        // 会话契约：ReceiveAsync 每会话只允许一次枚举（Task 2 单枚举守卫），
-        // echo 与 Close 必须从同一次枚举里先后取出；两次 ReceiveOne 会得 Protocol 错。
-        string echo = null;
-        WebSocketMessage close = null;
-        await foreach (var message in session.ReceiveAsync(cts.Token))
+        try
         {
-            if (message.Type == WebSocketMessageType.Close)
+            await session.SendAsync(
+                new WebSocketMessage(WebSocketMessageType.Text, Encoding.UTF8.GetBytes("bye"), true),
+                cts.Token);
+            // 会话契约：ReceiveAsync 每会话只允许一次枚举（Task 2 单枚举守卫），
+            // echo 与 Close 必须从同一次枚举里先后取出；两次 ReceiveOne 会得 Protocol 错。
+            string echo = null;
+            WebSocketMessage close = null;
+            await foreach (var message in session.ReceiveAsync(cts.Token))
             {
-                close = message;
-                break;
+                if (message.Type == WebSocketMessageType.Close)
+                {
+                    close = message;
+                    break;
+                }
+                echo = Encoding.UTF8.GetString(message.Payload.ToArray());
             }
-            echo = Encoding.UTF8.GetString(message.Payload.ToArray());
+            if (echo == null)
+            {
+                throw new InvalidOperationException("no echo message before close");
+            }
+            if (close == null)
+            {
+                throw new InvalidOperationException("no WebSocket close received");
+            }
+            var status = close.CloseStatus.HasValue ? close.CloseStatus.Value.ToString() : "none";
+            return "echo=" + echo + "|type=" + close.Type + "|close=" + status;
         }
-        if (echo == null)
+        finally
         {
-            throw new InvalidOperationException("no echo message before close");
+            await session.DisposeAsync();
         }
-        if (close == null)
-        {
-            throw new InvalidOperationException("no WebSocket close received");
-        }
-        var status = close.CloseStatus.HasValue ? close.CloseStatus.Value.ToString() : "none";
-        await session.DisposeAsync();
-        return "echo=" + echo + "|type=" + close.Type + "|close=" + status;
     }
 
     private async Task<string> ScenarioAbort()
     {
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15));
         var session = await _transport.ConnectAsync(Req(LocalWs), new WebSocketOptions(), cts.Token);
-        session.Abort();
-        string sendKind;
         try
         {
-            await session.SendAsync(
-                new WebSocketMessage(WebSocketMessageType.Text, Encoding.UTF8.GetBytes("x"), true),
-                CancellationToken.None);
-            sendKind = "FAIL_no_error";
+            session.Abort();
+            string sendKind;
+            try
+            {
+                await session.SendAsync(
+                    new WebSocketMessage(WebSocketMessageType.Text, Encoding.UTF8.GetBytes("x"), true),
+                    CancellationToken.None);
+                sendKind = "FAIL_no_error";
+            }
+            catch (TransportException ex)
+            {
+                sendKind = ex.Kind.ToString();
+            }
+            return "send_kind=" + sendKind;
         }
-        catch (TransportException ex)
+        finally
         {
-            sendKind = ex.Kind.ToString();
+            await session.DisposeAsync();
         }
-        await session.DisposeAsync();
-        return "send_kind=" + sendKind;
     }
 
     private async Task<string> ScenarioRemoteWss()
     {
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(20));
         var session = await _transport.ConnectAsync(Req(RemoteWs), new WebSocketOptions(), cts.Token);
-        await session.SendAsync(
-            new WebSocketMessage(WebSocketMessageType.Text, Encoding.UTF8.GetBytes("hello"), true),
-            cts.Token);
-        var message = await ReceiveOne(session, cts.Token);
-        await session.DisposeAsync();
-        return "type=" + message.Type +
-               "|payload=" + Encoding.UTF8.GetString(message.Payload.ToArray());
+        try
+        {
+            await session.SendAsync(
+                new WebSocketMessage(WebSocketMessageType.Text, Encoding.UTF8.GetBytes("hello"), true),
+                cts.Token);
+            var message = await ReceiveOne(session, cts.Token);
+            return "type=" + message.Type +
+                   "|payload=" + Encoding.UTF8.GetString(message.Payload.ToArray());
+        }
+        finally
+        {
+            await session.DisposeAsync();
+        }
     }
 
     private async Task<string> ScenarioErrorPort()

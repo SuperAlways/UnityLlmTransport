@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Net.WebSockets;
-using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -85,109 +84,186 @@ namespace UnityLlmTransport
             }
         }
 
-        public async IAsyncEnumerable<WebSocketMessage> ReceiveAsync(
-            [EnumeratorCancellation] CancellationToken ct)
+        // 说明（2026-11-07，Phase 5 四版本门禁实测驱动）：
+        // 这里不用 `async IAsyncEnumerable` 编译器迭代器，而是手写 IAsyncEnumerable/IAsyncEnumerator。
+        // 原因：Unity 2022.3 IL2CPP 的 corelib 中 AsyncIteratorMethodBuilder/ManualResetValueTaskSourceCore
+        // 存在缺陷——消费方在收到一条消息后 break（await foreach 触发迭代器 DisposeAsync 的续跑）会抛
+        // "InvalidOperationException: Operation is not valid due to the current state of the object"
+        //（栈：ManualResetValueTaskSourceCoreShared.CompletionSentinel → InvokeContinuation → 迭代器 MoveNext）。
+        // 2022.3 IL2CPP 实机复现；2021.3 IL2CPP / 6.3 / 6.6 IL2CPP 与四版本 Mono 均正常。
+        // 手写枚举器的 DisposeAsync 是普通代码（不触编译器续跑），语义与原迭代器逐条对齐。
+        public IAsyncEnumerable<WebSocketMessage> ReceiveAsync(CancellationToken ct)
         {
-            if (Interlocked.Exchange(ref _receiveStarted, 1) != 0)
+            return new ReceiveEnumerator(this, ct);
+        }
+
+        private sealed class ReceiveEnumerator : IAsyncEnumerable<WebSocketMessage>, IAsyncEnumerator<WebSocketMessage>
+        {
+            private readonly ClientWebSocketSession _session;
+            private readonly CancellationToken _ct;
+            private readonly byte[] _buffer = new byte[ReceiveBufferSize];
+            private CancellationTokenSource? _linkedCts;
+            private CancellationToken _token;
+            private WebSocketMessage? _current;
+            private bool _firstMoveNext = true;
+            private bool _resetBudget;
+            private bool _done;
+            private bool _disposed;
+
+            public ReceiveEnumerator(ClientWebSocketSession session, CancellationToken ct)
             {
-                throw new TransportException(
-                    TransportErrorKind.Protocol,
-                    "Only one ReceiveAsync enumeration is supported per session.");
+                _session = session;
+                _ct = ct;
+                _token = ct;
             }
 
-            var buffer = new byte[ReceiveBufferSize];
-            while (true)
+            public WebSocketMessage Current => _current!;
+
+            public IAsyncEnumerator<WebSocketMessage> GetAsyncEnumerator(CancellationToken cancellationToken)
             {
-                ThrowIfTerminal();
-                if (_socket.State != WebSocketState.Open && _socket.State != WebSocketState.CloseReceived)
+                if (cancellationToken.CanBeCanceled && cancellationToken != _ct)
                 {
-                    yield break;
+                    _linkedCts = CancellationTokenSource.CreateLinkedTokenSource(_ct, cancellationToken);
+                    _token = _linkedCts.Token;
+                }
+                return this;
+            }
+
+            public async ValueTask<bool> MoveNextAsync()
+            {
+                if (_done || _disposed)
+                {
+                    return false;
+                }
+                if (_firstMoveNext)
+                {
+                    _firstMoveNext = false;
+                    if (Interlocked.Exchange(ref _session._receiveStarted, 1) != 0)
+                    {
+                        throw new TransportException(
+                            TransportErrorKind.Protocol,
+                            "Only one ReceiveAsync enumeration is supported per session.");
+                    }
+                }
+                if (_resetBudget)
+                {
+                    _resetBudget = false;
+                    _session._budget.Reset();
                 }
 
-                CancellationTokenSource? idleCts = null;
-                CancellationTokenSource? linkedCts = null;
-                WebSocketReceiveResult result;
-                try
+                while (true)
                 {
-                    CancellationToken token = ct;
-                    if (_options.IdleTimeout.HasValue && _options.IdleTimeout.Value > TimeSpan.Zero)
+                    _session.ThrowIfTerminal();
+                    if (_session._socket.State != WebSocketState.Open &&
+                        _session._socket.State != WebSocketState.CloseReceived)
                     {
-                        idleCts = new CancellationTokenSource(_options.IdleTimeout.Value);
-                        linkedCts = CancellationTokenSource.CreateLinkedTokenSource(ct, idleCts.Token);
-                        token = linkedCts.Token;
+                        _done = true;
+                        return false;
                     }
 
-                    result = await _socket.ReceiveAsync(
-                        new ArraySegment<byte>(buffer),
-                        token).ConfigureAwait(false);
-                }
-                catch (OperationCanceledException ex) when (
-                    !ct.IsCancellationRequested &&
-                    idleCts != null &&
-                    idleCts.IsCancellationRequested)
-                {
-                    AbortWith(TransportErrorKind.IdleTimeout);
-                    throw new TransportException(
-                        TransportErrorKind.IdleTimeout,
-                        "WebSocket idle timeout.",
-                        ex,
-                        null,
-                        null,
-                        null,
-                        false);
-                }
-                catch (OperationCanceledException ex)
-                {
-                    AbortWith(TransportErrorKind.Cancelled);
-                    throw new TransportException(
-                        TransportErrorKind.Cancelled,
-                        "WebSocket receive cancelled.",
-                        ex,
-                        null,
-                        null,
-                        null,
-                        false);
-                }
-                catch (Exception ex)
-                {
-                    ThrowIfTerminal();
-                    AbortWith(TransportErrorKind.Protocol);
-                    throw WebSocketErrorClassifier.ClassifyOperation(ex, ct.IsCancellationRequested);
-                }
-                finally
-                {
-                    linkedCts?.Dispose();
-                    idleCts?.Dispose();
-                }
+                    CancellationTokenSource? idleCts = null;
+                    CancellationTokenSource? linkedCts = null;
+                    WebSocketReceiveResult result;
+                    try
+                    {
+                        CancellationToken token = _token;
+                        if (_session._options.IdleTimeout.HasValue &&
+                            _session._options.IdleTimeout.Value > TimeSpan.Zero)
+                        {
+                            idleCts = new CancellationTokenSource(_session._options.IdleTimeout.Value);
+                            linkedCts = CancellationTokenSource.CreateLinkedTokenSource(_token, idleCts.Token);
+                            token = linkedCts.Token;
+                        }
 
-                if (result.MessageType == System.Net.WebSockets.WebSocketMessageType.Close)
-                {
-                    yield return new WebSocketMessage(
-                        WebSocketMessageType.Close,
-                        ReadOnlyMemory<byte>.Empty,
-                        true,
-                        result.CloseStatus);
-                    yield break;
-                }
+                        result = await _session._socket.ReceiveAsync(
+                            new ArraySegment<byte>(_buffer),
+                            token).ConfigureAwait(false);
+                    }
+                    catch (OperationCanceledException ex) when (
+                        !_token.IsCancellationRequested &&
+                        idleCts != null &&
+                        idleCts.IsCancellationRequested)
+                    {
+                        _done = true;
+                        _session.AbortWith(TransportErrorKind.IdleTimeout);
+                        throw new TransportException(
+                            TransportErrorKind.IdleTimeout,
+                            "WebSocket idle timeout.",
+                            ex,
+                            null,
+                            null,
+                            null,
+                            false);
+                    }
+                    catch (OperationCanceledException ex)
+                    {
+                        _done = true;
+                        _session.AbortWith(TransportErrorKind.Cancelled);
+                        throw new TransportException(
+                            TransportErrorKind.Cancelled,
+                            "WebSocket receive cancelled.",
+                            ex,
+                            null,
+                            null,
+                            null,
+                            false);
+                    }
+                    catch (Exception ex)
+                    {
+                        _done = true;
+                        _session.ThrowIfTerminal();
+                        _session.AbortWith(TransportErrorKind.Protocol);
+                        throw WebSocketErrorClassifier.ClassifyOperation(ex, _token.IsCancellationRequested);
+                    }
+                    finally
+                    {
+                        linkedCts?.Dispose();
+                        idleCts?.Dispose();
+                    }
 
-                var type = result.MessageType == System.Net.WebSockets.WebSocketMessageType.Text
-                    ? WebSocketMessageType.Text
-                    : WebSocketMessageType.Binary;
-                var payload = new ReadOnlyMemory<byte>(
-                    buffer.AsSpan(0, result.Count).ToArray());
-                if (!_budget.Add(result.Count))
-                {
-                    AbortWith(TransportErrorKind.Overflow);
-                    throw new TransportException(
-                        TransportErrorKind.Overflow,
-                        "WebSocket message exceeded MaxMessageBytes.");
-                }
+                    if (result.MessageType == System.Net.WebSockets.WebSocketMessageType.Close)
+                    {
+                        _current = new WebSocketMessage(
+                            WebSocketMessageType.Close,
+                            ReadOnlyMemory<byte>.Empty,
+                            true,
+                            result.CloseStatus);
+                        _done = true;
+                        return true;
+                    }
 
-                yield return new WebSocketMessage(type, payload, result.EndOfMessage);
-                if (result.EndOfMessage)
-                {
-                    _budget.Reset();
+                    var type = result.MessageType == System.Net.WebSockets.WebSocketMessageType.Text
+                        ? WebSocketMessageType.Text
+                        : WebSocketMessageType.Binary;
+                    var payload = new ReadOnlyMemory<byte>(
+                        _buffer.AsSpan(0, result.Count).ToArray());
+                    if (!_session._budget.Add(result.Count))
+                    {
+                        _done = true;
+                        _session.AbortWith(TransportErrorKind.Overflow);
+                        throw new TransportException(
+                            TransportErrorKind.Overflow,
+                            "WebSocket message exceeded MaxMessageBytes.");
+                    }
+
+                    _current = new WebSocketMessage(type, payload, result.EndOfMessage);
+                    if (result.EndOfMessage)
+                    {
+                        _resetBudget = true;
+                    }
+                    return true;
                 }
+            }
+
+            // 早期 break（消费方拿到一条消息后停止枚举）走这里：纯标志位清理，不续跑状态机、
+            // 不 Abort 连接（连接生命周期归 session 的 DisposeAsync/Abort 管）。
+            public ValueTask DisposeAsync()
+            {
+                _disposed = true;
+                _done = true;
+                _linkedCts?.Dispose();
+                _linkedCts = null;
+                return default;
             }
         }
 
