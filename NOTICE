@@ -1,0 +1,6 @@
+UnityLlmTransport
+
+This product includes software derived from System.Net.ServerSentEvents
+(dotnet/runtime), licensed under the MIT License.
+Copyright (c) .NET Foundation and Contributors.
+Source: https://github.com/dotnet/runtime
