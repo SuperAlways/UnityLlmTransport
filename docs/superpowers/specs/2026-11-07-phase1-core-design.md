@@ -18,7 +18,7 @@ Phase 0 已证明：
 - WebSocket 本地/远程/Close/Abort 可用；
 - UWR 仅系统代理，显式代理走 HttpClient。
 
-Phase 1 的目标：**建立纯 .NET 的稳定契约与核心件**，让后续 UWR/HttpClient/WebSocket 适配器与 PiUnityAgent.Ai 只依赖这些契约。
+Phase 1 的目标：**建立纯 .NET 的稳定契约与核心件**，让后续 UWR/HttpClient/WebSocket 适配器、以及 PiUnityAgent 的 Host 适配器依赖这些契约。B 方案（2026-11-07）下，`PiUnityAgent.Ai` 只依赖自有 Fetch 端口，不直接依赖 `Abstractions`。
 
 ---
 
