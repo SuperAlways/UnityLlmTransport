@@ -295,13 +295,18 @@ UnityWebRequest(method, url)
 - 错误体：会话 `Body` 仍可读（UWR 在 500 时 `ReceiveData` 已收到错误体）。
 
 > **实现门禁**：三版本实机必须证明“首字节回调时 `responseCode != 0`、`GetResponseHeaders()` 含 `content-type`”。若不成立，Phase 2 暂停并修订设计（不得把整包缓冲伪装成流式）。
+>
+> **门禁结果（2026-11-07 实机）**：通过——三版本 × Mono/IL2CPP 的 U2 均 `status=200 content_type=True`（证据：`docs/spike/phase2-results.md`）。
 
 ### 5.4 流式与背压
 
 - `ReceiveData` 在主线程：仅 `ChunkQueue.TryWrite` 拷贝字节，不做 UTF-8/SSE/JSON；
 - 有界容量 `MaxBufferedBytes`（默认 4 MiB）：`TryWrite` 失败 → 队列以 `Overflow` 终止，`ReceiveData` 返回 `false`（引擎 abort），会话读取抛 `TransportException(Overflow)`；
 - `CompleteContent` → `queue.Complete()`；失败/取消 → `queue.Abort(error)`；
-- 会话返回后由 `WaitForCompletionAsync` 观察请求终止；队列未终止时成功→Complete、失败→Abort(classifier/Protocol)，防止读者悬挂。
+- 会话返回后由 `WatchCompletionAsync` 观察请求终止（队列已终止则无动作）：
+  - `Success` → `queue.Complete()`；
+  - 已交付的非 2xx（`ProtocolError` + `StatusCode>0`）：响应完整、错误 body 仍可读 → **按干净收尾 `Complete()`**，不得用伪 `Protocol` 中止把已缓冲的错误体清掉（U6 实机判据）；
+  - 其余失败/截断（如 `ConnectionError` 半截流）→ `Abort(classifier 错误)`，读者收到对应 `TransportException` 而非悬挂。
 - Abort 后残留回调由 `MarkAborted` 状态位丢弃（不产生二次错误）。
 
 ### 5.5 取消
@@ -309,7 +314,7 @@ UnityWebRequest(method, url)
 - `OpenAsync` 收到的 `CancellationToken` 注册到会话生命周期：取消 → `runner.Post(request.Abort)`（主线程）；
 - 等待首字节期间取消 → 立即 `Abort`，`StartAsync` 以取消完成，分类为 `Cancelled`；
 - 会话返回后取消 → 队列以 `Cancelled/Aborted` 终止，`Body.ReadAsync` 抛 `TransportException`，删除注册；
-- 会话返回后由 `WaitForCompletionAsync` 观察请求终止；队列未终止时成功→Complete、失败→Abort(classifier/Protocol)，防止读者悬挂。
+- 会话返回后由 `WatchCompletionAsync` 观察请求终止，语义见 §5.4（`Success` 与已交付非 2xx 干净收尾 `Complete()`，截断/失败按 classifier `Abort()`），防止读者悬挂。
 - `DisposeAsync` = Abort + 主线程 `request.Dispose()` + 队列终止；不得泄漏注册。
 
 ### 5.6 错误分类（纯函数）
@@ -330,9 +335,18 @@ UnityWebRequest(method, url)
 
 ### 5.7 压缩
 
-- 默认请求 `Accept-Encoding: identity`；
-- 若响应仍带 `Content-Encoding: gzip`（本地 `/sse-gzip` 会这样）：会话 `Body` 在消费线程用 `GZipStream` 包装队列流；
-- 若目标 Unity 版本缺少 `System.IO.Compression` 或门禁失败：`Compression` 能力置 false，并记录“UWR 不解压、SSE 会被压缩字节破坏”的限制；
+**实测事实（2026-11-07 三版本 × Mono/IL2CPP 实机，证据 `docs/spike/phase2-results.md`）**：
+
+- UWR（2021.3 / 6.3 / 6.6 三版本一致）对 gzip 响应**自动解压**，但响应头**仍保留 `Content-Encoding: gzip`**——不能只看头决定是否需要解压；
+- Mono 的 `GZipStream` 只支持同步读（异步 API 内部同步忙等）；IL2CPP 侧同样只保证同步读可用。
+
+**设计（实现落地形态）**：
+
+- 请求固定 `Accept-Encoding: identity`（不鼓励服务端压缩）；
+- 响应头含 `Content-Encoding: gzip` 且 `Decompress=true` 时，会话 `Body` 组装为 `AsyncOffloadStream(GzipSniffReadStream(SyncQueueReadStream(queue)))`：
+  - `GzipSniffReadStream` 按流头部 `1f 8b` magic 嗅探：UWR 已解压的字节直通（头仍标 gzip 的“假 gzip”）；真 gzip 交给 `GZipStream` 解码；
+  - Mono `GZipStream` 只能同步读 → 内层换成 `SyncQueueReadStream`（阻塞式队列视图），再由 `AsyncOffloadStream` 把同步解码 offload 到线程池，Body 对外保持异步只读契约，调用线程永不阻塞；
+- gzip 门禁（U8）三版本实机通过 → **`Compression` 能力保留**；若日后某版本确认“UWR 未解压且 `GZipStream` 无法消费”，再置 false 并记录限制；
 - `Decompress=false`：不补 identity、不包装解压。
 
 ### 5.8 Headers

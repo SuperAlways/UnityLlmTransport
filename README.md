@@ -1,6 +1,6 @@
 # UnityLlmTransport
 
-> **状态**：Phase 0（Spike）/ Phase 1（Core）已完成（2026-11-07，已合入 main）；Phase 2（UWR）待开工。
+> **状态**：Phase 0/1/2 已完成（2026-11-07）；Phase 3 待开工。
 > **定位**：Unity 运行时（AI mod 与原生 LLM/Agent 驱动的游戏）的**独立通讯底座**——在 Unity + netstandard2.1 条件下，承载 pi-ai / pi-agent-core 的**全部通讯需求**。PiUnityAgent 是首个消费者，但不是唯一消费者。
 
 ---
@@ -152,9 +152,26 @@ UnityLlmTransport/
       README.md
       Unity多版本通讯测试-SOP-2026-11-06.md
     spike/
+  scripts/
+    assemble-phase2-unity.sh
+  spikes/
+    SseTestServer/                   # UWR harness 的本地 SSE 服务（127.0.0.1:5199）
+    WsTestServer/
+    UnityUwrSpike/
+  src/
+    UnityLlmTransport.Abstractions/
+    UnityLlmTransport.Sse/
+    UnityLlmTransport.UnityWebRequest.Core/   # 纯桥接/分类，netstandard2.1，零 UnityEngine
+  tests/
+    UnityLlmTransport.Tests/
+    UnityLlmTransport.UnityWebRequest.Tests/
+  unity/
+    Phase2Harness/                   # Phase 2 Unity 侧 runner + build 脚本资产
+    UnityLlmTransport.UnityWebRequest/  # UWR 适配层 Runtime 源 + link.xml
+    UnityLlmTransport.Hosts.Unity/
 ```
 
-`src/` 与 `tests/` 已随 Phase 1 落地：`UnityLlmTransport.Abstractions`（端口/DTO/装饰器/Mock）、`UnityLlmTransport.Sse`（vendor SSE 解析器）、`tests/UnityLlmTransport.Tests`（53 项单测）。
+`src/` 与 `tests/` 已随 Phase 1/2 落地：`UnityLlmTransport.Abstractions`（端口/DTO/装饰器/Mock）、`UnityLlmTransport.Sse`（vendor SSE 解析器）、`UnityLlmTransport.UnityWebRequest.Core`（队列/流/分类/请求计划，纯逻辑）、`tests/UnityLlmTransport.Tests`、`tests/UnityLlmTransport.UnityWebRequest.Tests`。`unity/` 为 Phase 2 的 Unity 侧源码（适配层 + 协程 Host + harness，经 `scripts/assemble-phase2-unity.sh` 装配进 Unity 工程）；三版本 Mono/IL2CPP 实机结果见 `docs/spike/phase2-results.md`。
 
 ---
 
