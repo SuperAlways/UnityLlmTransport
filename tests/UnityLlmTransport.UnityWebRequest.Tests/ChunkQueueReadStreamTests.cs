@@ -84,8 +84,7 @@ namespace UnityLlmTransport.Tests
             var stream = new ChunkQueueReadStream(queue);
             await Task.Yield();
 
-            // xunit 2.9 对值返回 lambda 走过时(错误级)重载，改语句 lambda 走 Action 重载，语义不变。
-            Assert.Throws<NotSupportedException>(() => { stream.Read(new byte[16], 0, 16); });
+            Assert.Throws<NotSupportedException>(() => stream.Read(new byte[16], 0, 16));
         }
 
         [Fact]
