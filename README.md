@@ -1,6 +1,6 @@
 # UnityLlmTransport
 
-> **状态**：Phase 0/1/2/3/4/5 已完成；Phase 6（Hardening/发布）待开工。
+> **状态**：Phase 0/1/2/3/4/5/6 已完成（源码搬运形态，`VERSION 0.6.0`）；pi 按 commit 搬运源码；正式打包（NuGet/UPM/zip）待消费方验收后再评估。
 > **定位**：Unity 运行时（AI mod 与原生 LLM/Agent 驱动的游戏）的**独立通讯底座**——在 Unity + netstandard2.1 条件下，承载 pi-ai / pi-agent-core 的**全部通讯需求**。PiUnityAgent 是首个消费者（通过其自有 Fetch 端口 + Host 适配器），但不是唯一消费者。
 
 ---

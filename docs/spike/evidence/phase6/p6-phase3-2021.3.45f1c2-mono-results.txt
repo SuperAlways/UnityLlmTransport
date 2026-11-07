@@ -1,0 +1,15 @@
+PHASE3 unity_version=2021.3.45f1c2
+PHASE3 main_thread=1
+PHASE3 H1_stream|OK|status=200|open_ms=220|items=6|total_ms=741|data={"choices":[{"delta":{"content":"你"}}]}{"choices":[{"delta":{"content":"好"}}]}{"choices":[{"delta":{"content":"，"}}]}{"choices":[{"delta":{"content":"世"}}]}{"choices":[{"delta":{"content":"界"}}]}[DONE]
+PHASE3 H2_cancel|OK|cancel_error=TransportException kind=Cancelled code=- msg=Response aborted (Cancelled).
+PHASE3 H3_first_byte_timeout|OK|kind=FirstByteTimeout
+PHASE3 H3_idle_timeout|OK|kind=IdleTimeout
+PHASE3 H4_error_body|OK|status=500|body={"error":"boom"}
+PHASE3 H5_gzip|OK|items=6|data={"choices":[{"delta":{"content":"你"}}]}{"choices":[{"delta":{"content":"好"}}]}{"choices":[{"delta":{"content":"，"}}]}{"choices":[{"delta":{"content":"世"}}]}{"choices":[{"delta":{"content":"界"}}]}[DONE]
+PHASE3 H6_redirect_error|OK|kind=Protocol
+PHASE3 H6_redirect_follow|OK|status=200|items=6
+PHASE3 H7_tls_default|OK|kind=Tls
+PHASE3 H7_tls_accept|OK|status=200|body=ok
+PHASE3 H8_explicit_proxy|OK|status=200|body=proxied
+PHASE3 H9_headers_threads|OK|main=1|parse=7|skip=False|test=True
+PHASE3 
