@@ -1,6 +1,7 @@
-# Phase 2 · 三版本实机结果
+# Phase 2 · 三版本实机结果（2022.3 主基线待补）
 
 > 日期：2026-11-07。环境：Windows 11 + Unity `2021.3.45f1` / `6000.3.28f1` / `6000.6.8f1`，各出 Mono2x + IL2CPP 两个 player 构建。
+> **2022.3.62f3c1 测试主基线（游戏实际 f2）**：补测见文末“待补”节；未跑，不填结果。
 > 构建命令见 `unity/Phase2Harness/README.md`；SSE 测试服务 = `spikes/SseTestServer`（`127.0.0.1:5199`）。
 > 原始日志：`D:/UnitySpikes/phase2-<ver>-<backend>-player.log`；摘录文件 `D:/UnitySpikes/phase2-<ver>-<backend>-results.txt`，已逐字入库 → `docs/spike/evidence/phase2/<ver>-<backend>-results.txt`（六组各 15/15 `|OK|`）。
 > ⚠️ 2021.3 的构建目录是 `Builds/Phase2/2021.3.45f1c2/`（`Application.unityVersion` 带 c2 后缀，其余两版与编辑器版本号一致）。
@@ -186,3 +187,17 @@ PHASE2 U10_redirect_error|OK|kind=Protocol
 PHASE2 U10_redirect_follow|OK|status=200|items=6
 PHASE2 U11_abort_residual|OK|chunks_at_abort=1|after_1s=1
 ```
+
+---
+
+## 待补 · 2022.3 主基线（2026-11-07）
+
+> **状态**：未跑。Hub 编辑器下载/安装中（目录名 `2022.3.62f3c1`）；游戏实际 `2022.3.62f2`。结果必须按 `Application.unityVersion` 分列，f2/f3c1 不得混写；未跑前不得填 `|OK|`。
+>
+> 场景：Mono 全量 U1–U11（最低 U1/U3/U5/U6/U8/U9/U11）；IL2CPP 至少 U1/U3/U5。
+
+| 场景 | 2022.3 Mono | 2022.3 IL2CPP |
+|---|---|---|
+| U1–U11 | pending | pending（至少 U1/U3/U5） |
+
+**判据**：同现有 Mono/IL2CPP 矩阵；结果写入本文件新表 + `docs/spike/evidence/phase2/<ver>-<backend>-results.txt`。
