@@ -1,6 +1,6 @@
 # UnityLlmTransport
 
-> **状态**：Phase 0/1/2/3 已完成（2021.3/6.3/6.6 + 2022.3.62f3c1 主基线；Phase 3 HttpClient 四版本 Mono H1–H9 全过，共享 TimeoutTransport 修复后 2022.3 UWR 短回归 Mono 7/7 + IL2CPP 3/3；Phase 2 的 2022.3 UWR 结果见 `docs/spike/phase2-results.md`）；Phase 4 待开工。
+> **状态**：Phase 0/1/2/3/4 已完成；Phase 5（WebSocket 核心）与 Phase 6（Hardening/发布）待开工。
 > **定位**：Unity 运行时（AI mod 与原生 LLM/Agent 驱动的游戏）的**独立通讯底座**——在 Unity + netstandard2.1 条件下，承载 pi-ai / pi-agent-core 的**全部通讯需求**。PiUnityAgent 是首个消费者（通过其自有 Fetch 端口 + Host 适配器），但不是唯一消费者。
 
 ---
@@ -207,6 +207,6 @@ UnityLlmTransport/
 
 1. **Phase 2 follow-up · 2022.3.62f3c1 测试主基线**：已补测通过（Mono/IL2CPP U1–U11 15/15）；证据见 `docs/spike/phase2-results.md` 与 `docs/spike/evidence/phase2/`；游戏实际 f2 的最终游戏内验收由消费方执行，不在本仓库范围；
 2. **Phase 3 · HttpClient**：显式代理/TLS/桌面路径；消费方可将其作为 Fetch 端口的 .NET 实现；
-3. **Phase 4 · Auth/签名（仅传输侧）**：API Key/OAuth 注入、401 refresh、Signer Finalizer、Deferred 传输形状；不包含消费方集成；
+3. **Phase 4 · Auth/签名（仅传输侧）**：已完成（ApiKey/OAuth 注入、Signer Finalizer、401 refresh）；不包含消费方集成。
 4. **Phase 5 · 可选传输**：WebSocket / RawTcp / WebGL（M2）；
 5. **Phase 6 · Hardening**：录制回放、打包、全矩阵、tag/版本发布。
