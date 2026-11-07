@@ -13,6 +13,11 @@ namespace UnityLlmTransport
             TransportCapabilities.SystemProxy |
             TransportCapabilities.TlsCertificateHandler;
 
+        // 说明（2026-11-08，Phase 6 稳定性加固）：MaxMessageBytes==null（无限额）对客户端是
+        // 不设防的默认值——恶意/异常服务端一条消息即可撑爆内存。故 null 落到 16MiB 安全默认，
+        // 真要不限额请显式传 int.MaxValue。
+        public const int DefaultMaxMessageBytes = 16 * 1024 * 1024;
+
         public TransportCapabilities Capabilities => DefaultCapabilities;
 
         public async Task<IWebSocketSession> ConnectAsync(

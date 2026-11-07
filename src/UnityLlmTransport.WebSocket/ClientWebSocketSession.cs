@@ -27,7 +27,7 @@ namespace UnityLlmTransport
         {
             _socket = socket;
             _options = options;
-            _budget = new WebSocketBufferBudget(options.MaxMessageBytes);
+            _budget = new WebSocketBufferBudget(options.MaxMessageBytes ?? ClientWebSocketTransport.DefaultMaxMessageBytes);
             _registration = lifetimeToken.Register(() => AbortWith(TransportErrorKind.Cancelled));
         }
 

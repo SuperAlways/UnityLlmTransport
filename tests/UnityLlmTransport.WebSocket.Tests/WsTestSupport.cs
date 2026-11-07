@@ -114,6 +114,15 @@ namespace UnityLlmTransport.Tests
                         await SendAsync(socket, Encoding.UTF8.GetBytes(info), System.Net.WebSockets.WebSocketMessageType.Text, true);
                         await socket.CloseAsync(WebSocketCloseStatus.NormalClosure, "bye", CancellationToken.None);
                         break;
+                    case "/ws/huge":
+                        var hugeChunk = new byte[64 * 1024];
+                        for (int i = 0; i < 257; i++)
+                        {
+                            await SendAsync(socket, hugeChunk, System.Net.WebSockets.WebSocketMessageType.Binary, false);
+                        }
+                        await SendAsync(socket, new byte[1], System.Net.WebSockets.WebSocketMessageType.Binary, true);
+                        await socket.CloseAsync(WebSocketCloseStatus.NormalClosure, "bye", CancellationToken.None);
+                        break;
                     case "/ws/slow":
                         await SendAsync(socket, Encoding.UTF8.GetBytes("slow"), System.Net.WebSockets.WebSocketMessageType.Text, true);
                         await socket.CloseAsync(WebSocketCloseStatus.NormalClosure, "bye", CancellationToken.None);
