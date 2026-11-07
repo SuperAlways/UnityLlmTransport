@@ -6,4 +6,3 @@ PHASE5 W3_close|OK|echo=echo:bye|type=Close|close=NormalClosure
 PHASE5 W4_abort|OK|send_kind=Aborted
 PHASE5 W5_remote_wss|OK|type=Text|payload=hello
 PHASE5 W6_error_port|OK|kind=Connect
-PHASE5 
