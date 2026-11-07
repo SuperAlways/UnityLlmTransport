@@ -1,0 +1,9 @@
+PHASE5 unity_version=2021.3.45f1c2
+PHASE5 main_thread=1
+PHASE5 W1_text|OK|type=Text|payload=echo:hello
+PHASE5 W2_utf8|OK|payload=echo:你好，世界
+PHASE5 W3_close|OK|echo=echo:bye|type=Close|close=NormalClosure
+PHASE5 W4_abort|OK|send_kind=Aborted
+PHASE5 W5_remote_wss|OK|type=Text|payload=hello
+PHASE5 W6_error_port|OK|kind=Connect
+PHASE5 

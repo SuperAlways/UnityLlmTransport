@@ -1,6 +1,6 @@
 # UnityLlmTransport
 
-> **状态**：Phase 0/1/2/3/4 已完成；Phase 5（WebSocket 核心）与 Phase 6（Hardening/发布）待开工。
+> **状态**：Phase 0/1/2/3/4/5 已完成；Phase 6（Hardening/发布）待开工。
 > **定位**：Unity 运行时（AI mod 与原生 LLM/Agent 驱动的游戏）的**独立通讯底座**——在 Unity + netstandard2.1 条件下，承载 pi-ai / pi-agent-core 的**全部通讯需求**。PiUnityAgent 是首个消费者（通过其自有 Fetch 端口 + Host 适配器），但不是唯一消费者。
 
 ---
@@ -165,9 +165,10 @@ UnityLlmTransport/
   scripts/
     assemble-phase2-unity.sh
     assemble-phase3-unity.sh
+    assemble-phase5-unity.sh
   spikes/
     SseTestServer/                   # UWR harness 的本地 SSE 服务（127.0.0.1:5199）
-    WsTestServer/
+    WsTestServer/                    # Phase 5 harness 的本地 ws echo 服务（ws://127.0.0.1:5200/ws/）
     UnityUwrSpike/
     Phase3TestServer/                # HttpClient harness 的测试服务（HTTP 5201 / HTTPS 5233 / 代理 5234）
   src/
@@ -175,28 +176,31 @@ UnityLlmTransport/
     UnityLlmTransport.Sse/
     UnityLlmTransport.HttpClient/             # HttpClient 实现（桌面/后端；零 UnityEngine）
     UnityLlmTransport.Auth/                   # ApiKey/OAuth 注入 + SignerFinalizer（Phase 4）
+    UnityLlmTransport.WebSocket/              # ClientWebSocket 传输/会话/分类/预算（Phase 5；零 UnityEngine）
     UnityLlmTransport.UnityWebRequest.Core/   # 纯桥接/分类，netstandard2.1，零 UnityEngine
   tests/
     UnityLlmTransport.Tests/
     UnityLlmTransport.UnityWebRequest.Tests/
     UnityLlmTransport.HttpClient.Tests/       # 52 项：流式/取消/超时/代理/TLS/重定向/契约
     UnityLlmTransport.Auth.Tests/             # 24 项：ApiKey/OAuth/Signer/401 管线
+    UnityLlmTransport.WebSocket.Tests/        # 34 项：会话边界/超时/TLS/能力矩阵（Phase 5）
     Phase3TestSupport/                        # 进程内 Kestrel 测试服务（只进测试）
   unity/
     Phase2Harness/                   # Phase 2 Unity 侧 runner + build 脚本资产
     Phase3Harness/                   # Phase 3 Unity Mono harness（H1–H9）
+    Phase5Harness/                   # Phase 5 Unity harness（W1–W6；Mono/IL2CPP 四版本矩阵）
     UnityLlmTransport.UnityWebRequest/  # UWR 适配层 Runtime 源 + link.xml
     UnityLlmTransport.Hosts.Unity/
 ```
 
-`src/` 与 `tests/` 已随 Phase 1/2/3/4 落地：`UnityLlmTransport.Abstractions`（端口/DTO/装饰器/Mock）、`UnityLlmTransport.Sse`（vendor SSE 解析器）、`UnityLlmTransport.HttpClient`（传输/会话/请求构建/handler 映射/错误分类，netstandard2.1 零 UnityEngine）、`UnityLlmTransport.Auth`（ApiKey/OAuth 注入 + SignerFinalizer，纯 .NET）、`UnityLlmTransport.UnityWebRequest.Core`（队列/流/分类/请求计划，纯逻辑）、`tests/UnityLlmTransport.Tests`、`tests/UnityLlmTransport.UnityWebRequest.Tests`、`tests/UnityLlmTransport.HttpClient.Tests`、`tests/UnityLlmTransport.Auth.Tests`（含 `Phase3TestSupport` 进程内测试服务）。`unity/` 为 Phase 2/3 的 Unity 侧源码（适配层 + 协程 Host + 两个 harness，经 `scripts/assemble-phase2-unity.sh` / `assemble-phase3-unity.sh` 装配进 Unity 工程）；Phase 2 的 2021.3/6.3/6.6 + 2022.3 主基线 Mono/IL2CPP 结果见 `docs/spike/phase2-results.md`，HttpClient 四版本 Mono + 共享修复的 UWR 短回归结果见 `docs/spike/phase3-results.md`；Auth 为纯 .NET，无 Unity 矩阵。
+`src/` 与 `tests/` 已随 Phase 1/2/3/4/5 落地：`UnityLlmTransport.Abstractions`（端口/DTO/装饰器/Mock）、`UnityLlmTransport.Sse`（vendor SSE 解析器）、`UnityLlmTransport.HttpClient`（传输/会话/请求构建/handler 映射/错误分类，netstandard2.1 零 UnityEngine）、`UnityLlmTransport.Auth`（ApiKey/OAuth 注入 + SignerFinalizer，纯 .NET）、`UnityLlmTransport.WebSocket`（`ClientWebSocketTransport`/`Session` + 错误分类/消息预算，netstandard2.1 零 UnityEngine）、`UnityLlmTransport.UnityWebRequest.Core`（队列/流/分类/请求计划，纯逻辑）、`tests/UnityLlmTransport.Tests`、`tests/UnityLlmTransport.UnityWebRequest.Tests`、`tests/UnityLlmTransport.HttpClient.Tests`、`tests/UnityLlmTransport.Auth.Tests`（含 `Phase3TestSupport` 进程内测试服务）、`tests/UnityLlmTransport.WebSocket.Tests`（34 项）。`unity/` 为 Phase 2/3/5 的 Unity 侧源码（适配层 + 协程 Host + 三个 harness，经 `scripts/assemble-phase2-unity.sh` / `assemble-phase3-unity.sh` / `assemble-phase5-unity.sh` 装配进 Unity 工程）；Phase 2 的 2021.3/6.3/6.6 + 2022.3 主基线 Mono/IL2CPP 结果见 `docs/spike/phase2-results.md`，HttpClient 四版本 Mono + 共享修复的 UWR 短回归结果见 `docs/spike/phase3-results.md`，WebSocket 四版本 Mono/IL2CPP（8 组 W1–W6 全过）结果见 `docs/spike/phase5-results.md`；Auth 为纯 .NET，无 Unity 矩阵。
 
 ---
 
 ## 八、待定决策
 
 1. Unity 前端直连是首要形态；.NET 8 后端不作为本组件目标（已有 HttpClient/pi.net）——**已定**；
-2. 传输实现顺序：UWR（Phase 2 已过 2021.3/6.3/6.6 + 2022.3.62f3c1）→ HttpClient（Phase 3）→ RawTcp/WebSocket（Phase 5）——**已定**；
+2. 传输实现顺序：UWR（Phase 2 已过 2021.3/6.3/6.6 + 2022.3.62f3c1）→ HttpClient（Phase 3）→ WebSocket（Phase 5，四版本 Mono/IL2CPP 已过）；RawTcp 兜底与 WebGL（M2）后置——**已定**；
 3. WebGL 是否进 M1：**M2 再做**；
 4. 认证范围：API Key/OAuth 注入与 Signer Finalizer 的传输侧形状已在 Phase 4 落地；SigV4/ADC/Azure 算法由消费方实现——**已定**；
 5. 重试策略归属：传输层只做分类；策略在 provider adapter（PiUnityAgent S4）——**已定**；
@@ -210,5 +214,5 @@ UnityLlmTransport/
 1. **Phase 2 follow-up · 2022.3.62f3c1 测试主基线**：已补测通过（Mono/IL2CPP U1–U11 15/15）；证据见 `docs/spike/phase2-results.md` 与 `docs/spike/evidence/phase2/`；游戏实际 f2 的最终游戏内验收由消费方执行，不在本仓库范围；
 2. **Phase 3 · HttpClient**：显式代理/TLS/桌面路径；消费方可将其作为 Fetch 端口的 .NET 实现；
 3. **Phase 4 · Auth/签名（仅传输侧）**：已完成（ApiKey/OAuth 注入、Signer Finalizer、401 refresh）；不包含消费方集成。
-4. **Phase 5 · 可选传输**：WebSocket / RawTcp / WebGL（M2）；
-5. **Phase 6 · Hardening**：录制回放、打包、全矩阵、tag/版本发布。
+4. **Phase 5 · WebSocket 核心（传输侧）**：已完成（`ClientWebSocketTransport`/`Session` + 34 项 dotnet 测试；四版本 Mono/IL2CPP 8 组 W1–W6 全过）；WS→SSE 回退 / 重连 / `WebSocketCached` 属消费方/后续，RawTcp 与 WebGL 后置；
+5. **Phase 6 · Hardening**：录制回放、打包、全矩阵、tag/版本发布——**待开工**。
