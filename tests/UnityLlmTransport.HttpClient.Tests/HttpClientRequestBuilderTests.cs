@@ -83,8 +83,8 @@ namespace UnityLlmTransport.Tests
 
             Assert.Equal("application/json", message.Content!.Headers.ContentType!.MediaType);
             // net7+ 的 HttpHeaders.Contains 对"内容头查请求头集合"会抛 InvalidOperationException（Mono/.NET Framework 返回 false），
-            // 故用集合计数断言：本用例只有 Content-Type 一个头，路由到 content 后请求头应为空。
-            Assert.Equal(0, message.Headers.Count());
+            // 故断言请求头集合为空：本用例只有 Content-Type 一个头，路由到 content 后请求头应为空。
+            Assert.Empty(message.Headers);
         }
 
         [Fact]

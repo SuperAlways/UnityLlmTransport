@@ -5,6 +5,8 @@
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
     <NuGetAudit>false</NuGetAudit>
+    <!-- Tests intentionally read once from a repeatedly-read stream; CA2022 is not applicable. -->
+    <NoWarn>$(NoWarn);CA2022</NoWarn>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
