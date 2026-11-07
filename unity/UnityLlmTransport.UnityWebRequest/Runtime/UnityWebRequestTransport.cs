@@ -212,8 +212,10 @@ namespace UnityLlmTransport
                     snapshot.Error,
                     false);
             }
-            handler.MarkAborted(error.Kind);
+            // 先用分类错误终止队列（first-wins），MarkAborted 自己的泛型 abort 随后 no-op，
+            // 但其抑制旗仍会装上——否则状态/头/UWR 错误会被 "Response aborted (Kind)" 泛化信息顶掉。
             queue.Abort(error);
+            handler.MarkAborted(error.Kind);
         }
 
         private sealed record BuiltRequest(UnityWebRequest Request, StreamingDownloadHandler Handler);

@@ -416,7 +416,7 @@ Phase 2 的 Unity 侧源码按 **Assembly-CSharp** 编译（无 asmdef），`lin
 | U8 | gzip | `/sse-gzip` 经适配器解析出条目（identity 或解压生效） |
 | U9 | 线程纪律 | `ReceiveData` 在主线程；解析/队列读取不在主线程（记录线程 id） |
 | U10 | 重定向 | `RedirectPolicy.Error` 对重定向端点报错；`Follow` 成功 |
-| U11 | Abort 残留 | Abort 后 1s 窗口回调计数不再增长 |
+| U11 | Abort 残留 | Abort 后 1s 窗口观察块计数不增长（证明**读侧干净**：观察块仅随读取经 `TeeStream` 触发，abort 后读通道干净终止、窗口内无迟到观察块；引擎层 ReceiveData 残留回调抑制由 `StreamingDownloadHandler._aborted` 设计 + Phase 0 实机证据支撑，直证推迟到 Phase 3） |
 
 > `SseTestServer` 需新增 `/sse-slow`（600ms 首包，供 U4 首字节超时）、`/sse-idle`（首包立即、后续 400ms，供 U4 空闲超时）、`/sse-big`（快速大块，供 U5）与 `/redirect`（302 → `/sse`，供 U10）；其余复用 Phase 0 服务。
 
@@ -458,7 +458,7 @@ Phase 2 的 Unity 侧源码按 **Assembly-CSharp** 编译（无 asmdef），`lin
 - [ ] 纯逻辑测试全绿（Queue/Stream/Planner/Classifier）；
 - [ ] 三个 Unity 版本 Mono：U1–U11 全过（结果写入 `docs/spike/phase2-results.md` + 原始 evidence）；
 - [ ] 三版本 IL2CPP：U1/U3/U5 冒烟通过，`link.xml` 生效；
-- [ ] 主线程零解析；Abort 后无残留回调；溢出无卡死；
+- [ ] 主线程零解析；Abort 后读侧干净终止（U11 判据边界见 §7.2——引擎层 ReceiveData 直证推迟到 Phase 3）；溢出无卡死；
 - [ ] gzip 门禁结论明确（支持则 `Compression=true`，否则文档记限制）；
 - [ ] `link.xml` 随 Unity 资产提交；缺 link.xml 不可发布写进 README/SOP；
 - [ ] 不修改 `PiUnityAgent.Ai`/`Abstractions` 的公共形状；仅新增适配器与纯 Core 包；
