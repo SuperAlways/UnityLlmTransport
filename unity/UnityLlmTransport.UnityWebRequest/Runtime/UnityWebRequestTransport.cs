@@ -196,6 +196,13 @@ namespace UnityLlmTransport
             var error = UwrResponseClassifier.Classify(snapshot, snapshot.Completion == UwrCompletion.Aborted);
             if (error == null)
             {
+                if (snapshot.Completion == UwrCompletion.ProtocolError)
+                {
+                    // 已交付的非 2xx（协议错误 + 有状态码）：响应完整、body 可读，按干净收尾交付，
+                    // 不得用伪 Protocol 中止把已缓冲的错误 body 清掉。
+                    queue.Complete();
+                    return;
+                }
                 error = new TransportException(
                     TransportErrorKind.Protocol,
                     "Stream ended before completion.",

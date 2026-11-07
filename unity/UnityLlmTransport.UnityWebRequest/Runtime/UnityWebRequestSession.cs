@@ -1,6 +1,5 @@
 using System;
 using System.IO;
-using System.IO.Compression;
 using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine.Networking;
@@ -36,7 +35,10 @@ namespace UnityLlmTransport
             Stream body = new ChunkQueueReadStream(queue);
             if (decompress && IsGzip(headers))
             {
-                body = new GZipStream(body, CompressionMode.Decompress, leaveOpen: false);
+                // Mono 的 GZipStream 内部只走同步 Read；UWR 又可能已自动解压 gzip（头仍标 gzip）。
+                // 同步队列视图 + 按 magic 嗅探 + 线程池 offload：Body 保持异步只读契约，调用线程永不阻塞。
+                body = new AsyncOffloadStream(
+                    new GzipSniffReadStream(new SyncQueueReadStream(queue)));
             }
             Body = body;
 
