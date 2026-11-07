@@ -1,6 +1,6 @@
 # 代理 / TLS 矩阵（Phase 0 Task 4）
 
-> Spike 结论先行：**HttpClient 在 Windows 上系统代理/显式代理/自签 TLS 三条路全部可控**——系统代理自动吃 WinINET 设置（含 bypass），显式代理 `WebProxy` 生效，自签证书默认拒（`UntrustedRoot`）但 `ServerCertificateCustomValidationCallback` 可绕。Unity 侧 UWR / ClientWebSocket 待实机回填。
+> Spike 结论先行：**HttpClient 在 Windows 上系统代理/显式代理/自签 TLS 三条路全部可控**——系统代理自动吃 WinINET 设置（含 bypass），显式代理 `WebProxy` 生效，自签证书默认拒（`UntrustedRoot`）但 `ServerCertificateCustomValidationCallback` 可绕。**Unity UWR 已实机回填：正常 TLS 200、自签 + certificateHandler 200、自签默认 `SSL CA certificate error`；UWR 无显式代理 API。ClientWebSocket 远程 wss 实测通过。**
 
 ## 环境（实测时点）
 
@@ -44,12 +44,13 @@ dotnet run --project spikes/ProxyTlsSpike -- https://www.google.com/
 | HttpClient | HTTPS 自签·严格 | system-proxy（bypass→直连） | 自签·不受信 | **FAIL** | `AuthenticationException: UntrustedRoot` | 6ms 即拒 |
 | HttpClient | HTTPS 自签·严格 | explicit-proxy 7897 | 自签·不受信 | **FAIL** | `AuthenticationException: UntrustedRoot` | 8ms 即拒——代理只隧道不干预证书校验，责任全在客户端 |
 | HttpClient | HTTPS 自签 + `DangerousAcceptAnyServerCertificateValidator`（`PROXY_TLS_SPIKE_ALLOW_UNTRUSTED=1`） | no-proxy / system / explicit 三格 | 自签·callback 绕过 | **200 ×3** | – | 7-30ms——HttpClient 有官方绕过口子 |
-| UWR | HTTP 本地 / HTTPS 远程 | 系统代理开/关 | – | **Unity 手动执行待回填** | – | brief Step 4.3：系统代理开/关 × 本地/远程 |
-| UWR | HTTPS 自签 | – | 自签 | **Unity 手动执行待回填** | – | brief Step 4.3：需 `CertificateHandler` 子类（`CertificateHandler` 默认亦校验） |
-| UWR | 任意 | explicit-proxy | – | **不可用**（UWR 无显式代理 API）+ **Unity 手动执行待回填** | – | brief Step 4.3 预判：UWR 没有设代理的 API；Unity 实机确认后定稿 |
-| ClientWebSocket | ws:// 本地 | – | 无 | **Unity 手动执行待回填** | – | brief Step 4.3 |
-| ClientWebSocket | wss:// 远程 | – | 系统信任 CA | **Unity 手动执行待回填** | – | brief Step 4.3 |
-| ClientWebSocket | 任意 | system-proxy | – | **Unity 手动执行待回填** | – | brief Step 4.3：ClientWebSocket 是否吃系统代理未实测 |
+| UWR（Unity 三版本） | HTTP 本地 / HTTPS `example.com` | 系统代理开 | 正常 CA | **200** | – | `tls-normal` 三版本均 200 |
+| UWR（Unity 三版本） | HTTPS 自签 `self-signed.badssl.com` + `CertificateHandler` | 系统代理开 | 自签·callback 绕过 | **200** | – | `tls-selfsigned-accept` 三版本均 200 |
+| UWR（Unity 三版本） | HTTPS 自签，默认校验 | 系统代理开 | 自签·不受信 | **FAIL** | `ConnectionError/code=0/SSL CA certificate error` | `tls-selfsigned-default` 三版本一致 |
+| UWR | 任意 | explicit-proxy | – | **不可用**（UWR 无显式代理 API） | – | 实机确认：无显式代理 API；系统代理会返回 502 |
+| ClientWebSocket（Unity 三版本） | ws:// 本地 | 系统代理开 | 无 | **OK** | – | `type=Text bytes=10 echo:hello` |
+| ClientWebSocket（Unity 三版本） | wss:// 远程 Postman echo | 系统代理开 | 系统信任 CA | **OK** | – | `type=Text bytes=5 text=hello` |
+| ClientWebSocket（Unity 三版本） | 系统代理 | – | – | **未比较关代理** | – | 只测系统代理开 |
 
 ### 每格耗时（brief Step 4.3 口径：结果/异常/耗时）
 
@@ -73,11 +74,10 @@ dotnet run --project spikes/ProxyTlsSpike -- https://www.google.com/
 
 ## 待办（Unity 手动部分，brief Step 4.3）
 
-- [ ] UWR：系统代理开/关 × 本地 http / 远程 https
-- [ ] UWR：自签证书（含 `CertificateHandler` 绕过与否）
-- [ ] UWR：显式代理无 API → Unity 实机确认后把矩阵"不可用"格定稿
-- [ ] ClientWebSocket：本地 ws / 远程 wss / 系统代理
-- [ ] 每格回填：成功/失败、`result`/`responseCode`/异常、耗时
+- [x] UWR：HTTPS 正常 / 自签 + certificateHandler / 自签默认拒（三版本）
+- [x] UWR：显式代理无 API 确认
+- [x] ClientWebSocket：本地 ws / 远程 wss（三版本）
+- [ ] 系统代理关闭后的对照（可选）
 
 ## 附录：自签端点临时件（仓库外）
 

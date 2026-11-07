@@ -46,6 +46,19 @@
 
 > 六种组合全部通过；错误端口统一是系统代理返回 502，不是 ConnectionError/0。
 
+### 1.3 扩展矩阵（三版本 Mono + IL2CPP）
+
+| 测试 | 2021.3 | 6.3 | 6.6 |
+|---|---|---|---|
+| ws Close（收 Close + 回握手） | `NormalClosure/bye`，`finalState=CloseSent` | 同左 | 同左 |
+| ws Abort | `abortedState=Aborted` | 同左 | 同左 |
+| 远程 wss（Postman echo） | `type=Text bytes=5 text=hello` | 同左 | 同左 |
+| TLS 正常（example.com） | Success / 200 | 同左 | 同左 |
+| TLS 自签 + certificateHandler | Success / 200 | 同左 | 同左 |
+| TLS 自签 + 默认校验 | ConnectionError / code=0 / `SSL CA certificate error` | 同左 | 同左 |
+
+> 以上均在 Mono 与 IL2CPP 下分别通过；每版本至少各跑一次。
+
 ### 关键结论
 
 1. **UWR + `DownloadHandlerScript` 在两个版本都真流式**：6 次回调、首块 ~17–50ms、总时长 ~0.6s。
