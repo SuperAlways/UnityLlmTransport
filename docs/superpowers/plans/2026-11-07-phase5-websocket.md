@@ -1928,10 +1928,6 @@ public sealed class Phase5Runner : MonoBehaviour
             new WebSocketMessage(WebSocketMessageType.Text, Encoding.UTF8.GetBytes("hello"), true),
             cts.Token);
         var message = await ReceiveOne(session, cts.Token);
-        await session.CloseAsync(
-            System.Net.WebSockets.WebSocketCloseStatus.NormalClosure,
-            "bye",
-            cts.Token);
         await session.DisposeAsync();
         return "type=" + message.Type +
                "|payload=" + Encoding.UTF8.GetString(message.Payload.ToArray());
