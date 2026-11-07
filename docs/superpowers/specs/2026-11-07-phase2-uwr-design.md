@@ -428,7 +428,7 @@ Phase 2 的 Unity 侧源码按 **Assembly-CSharp** 编译（无 asmdef），`lin
 ### 7.4 实机边界
 
 - Phase 2 的“实机”= 用三个 Unity 版本构建的 Windows Player（与 Phase 0 同法）；
-- 塞入太吾游戏本体（官方 mod 加载）放到 Phase 4（PiUnityAgent 接入）联调，不在本阶段承诺。
+- 塞入太吾游戏本体（官方 mod 加载）由消费方（如 PiUnityAgent）在其仓库/阶段自行联调，不在本仓库阶段范围。
 
 ---
 

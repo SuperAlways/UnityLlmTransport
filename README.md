@@ -116,7 +116,7 @@ B 方案（2026-11-07）：`PiUnityAgent.Ai` 的 provider adapter 只依赖 **Pi
 
 ---
 
-## 六、与 PiUnityAgent 的关系
+## 六、消费方边界（本仓库不驱动消费方计划）
 
 | 项目 | 负责 |
 |---|---|
@@ -132,7 +132,7 @@ PiUnityAgent.Hosts.Unity/Ext  →  UnityLlmTransport.Abstractions（经适配器
 UnityLlmTransport.*  →  不引用 PiUnityAgent 的任何类型
 ```
 
-接缝唯一权威：`PiUnityAgent/docs/07-通讯层集成契约.md`。本组件版本锁：`87db637`（Phase 2 终审）。
+接缝唯一权威：`PiUnityAgent/docs/07-通讯层集成契约.md`。**本仓库不包含任何 PiUnityAgent 代码、集成任务或阶段门禁**；其 provider 联调、S4 验收与游戏内验收均在其仓库完成。本组件只维护通讯契约与消费方需求（`docs/03-pi通讯需求矩阵.md`）。
 
 ---
 
@@ -205,8 +205,8 @@ UnityLlmTransport/
 
 ## 九、下一步
 
-1. **Phase 2 follow-up · 2022.3.62f3c1 测试主基线**：已补测通过（Mono/IL2CPP U1–U11 15/15）；证据见 `docs/spike/phase2-results.md` 与 `docs/spike/evidence/phase2/`；游戏实际 f2 的最终游戏内验收属 PiUnityAgent S4；
-2. **Phase 3 · HttpClient**：显式代理/TLS/桌面路径；`Consumers` 可用其作为 Fetch 端口的 .NET 实现；
-3. **Phase 4 · Auth**：API Key/OAuth 注入、401 refresh、Finalizer；PiUnityAgent 适配器由 PiUnityAgent 侧维护，本组件提供契约测试消费者；
+1. **Phase 2 follow-up · 2022.3.62f3c1 测试主基线**：已补测通过（Mono/IL2CPP U1–U11 15/15）；证据见 `docs/spike/phase2-results.md` 与 `docs/spike/evidence/phase2/`；游戏实际 f2 的最终游戏内验收由消费方执行，不在本仓库范围；
+2. **Phase 3 · HttpClient**：显式代理/TLS/桌面路径；消费方可将其作为 Fetch 端口的 .NET 实现；
+3. **Phase 4 · Auth/签名（仅传输侧）**：API Key/OAuth 注入、401 refresh、Signer Finalizer、Deferred 传输形状；不包含消费方集成；
 4. **Phase 5 · 可选传输**：WebSocket / RawTcp / WebGL（M2）；
-5. **Phase 6 · Hardening**：录制回放、打包、全矩阵、tag/版本发布（当前 PiUnityAgent 以 commit `87db637` 锁定）。
+5. **Phase 6 · Hardening**：录制回放、打包、全矩阵、tag/版本发布。

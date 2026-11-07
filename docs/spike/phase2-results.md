@@ -259,4 +259,4 @@ PHASE2 U10_redirect_follow|OK|status=200|items=6
 PHASE2 U11_abort_residual|OK|chunks_at_abort=1|after_1s=1
 ```
 
-**结论**：2022.3.62f3c1 主基线 Mono/IL2CPP 全量 U1–U11 通过；唯一未覆盖的是 f2 游戏内最终验收（属 PiUnityAgent S4）。
+**结论**：2022.3.62f3c1 主基线 Mono/IL2CPP 全量 U1–U11 通过；唯一未覆盖的是 f2 游戏内最终验收（不在本仓库范围，由消费方执行）。
