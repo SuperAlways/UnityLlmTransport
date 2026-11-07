@@ -22,6 +22,11 @@ namespace UnityLlmTransport
         public TimeSpan? ConnectTimeout { get; init; }
         public TimeSpan? IdleTimeout { get; init; }
         public TimeSpan? KeepAliveInterval { get; init; }
+        /// <summary>
+        /// 单条消息累计上限（字节）。null 时由具体 WebSocket 传输施加安全默认上限
+        /// （当前 ClientWebSocketTransport = 16 MiB）；显式值优先。
+        /// 如需无上限，显式设为 int.MaxValue（注意累计计数在 &gt;2GiB 时有 int 溢出风险）。
+        /// </summary>
         public int? MaxMessageBytes { get; init; }
         public ProxyOptions? Proxy { get; init; }
         public TlsOptions? Tls { get; init; }

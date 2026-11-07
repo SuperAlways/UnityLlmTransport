@@ -17,7 +17,7 @@
 
 - HTTP/1.1（必需）；HTTP/2（可选）；
 - SSE、chunked transfer-encoding、NDJSON；
-- WebSocket（部分 provider/传输需要）；
+- WebSocket（部分 provider/传输需要）；单条消息默认 16MiB 上限（`MaxMessageBytes=null` 时由 `ClientWebSocketTransport` 施加，显式值优先；`int.MaxValue` 可解除，注意 >2GiB 累计计数 int 溢出风险）；
 - 流式请求体（如需要）与流式响应体；
 - 连接池、重定向、压缩（可控）。
 
