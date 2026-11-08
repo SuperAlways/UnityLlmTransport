@@ -1,218 +1,259 @@
 # UnityLlmTransport
 
-> **状态**：Phase 0/1/2/3/4/5/6 已完成（源码搬运形态，`VERSION 0.6.0`）；pi 按 commit 搬运源码；正式打包（NuGet/UPM/zip）待消费方验收后再评估。
-> **定位**：Unity 运行时（AI mod 与原生 LLM/Agent 驱动的游戏）的**独立通讯底座**——在 Unity + netstandard2.1 条件下，承载 pi-ai / pi-agent-core 的**全部通讯需求**。PiUnityAgent 是首个消费者（通过其自有 Fetch 端口 + Host 适配器），但不是唯一消费者。
+> **Unity 运行时的独立 LLM 通讯底座**——在 Unity + netstandard2.1 的硬约束下，承载 pi-ai / pi-agent-core 的全部通讯需求。
 
----
+[English](README.en.md) | 中文
 
-## 一、一句话目标
-
-> 不是一个“OpenAI SSE 客户端”，而是**pi 通讯面的 Unity 宿主实现**：让所有 provider 协议、认证、流式、长任务、宿主事件都能只依赖一层可替换的通讯抽象。
-
----
-
-## 二、覆盖范围（设计上）
-
-### 传输
-
-- HTTP/1.1（必需）；HTTP/2（可选）；
-- SSE、chunked transfer-encoding、NDJSON；
-- WebSocket（部分 provider/传输需要）；单条消息默认 16MiB 上限（`MaxMessageBytes=null` 时由 `ClientWebSocketTransport` 施加，显式值优先；`int.MaxValue` 可解除，注意 >2GiB 累计计数 int 溢出风险）；
-- 流式请求体（如需要）与流式响应体；
-- 连接池、重定向、压缩（可控）。
-
-### 请求/响应能力
-
-- Method、URL、headers、body（string/bytes/stream）；
-- 状态码、响应 headers、流式响应体；
-- 代理（系统/显式）、TLS/证书策略；
-- 连接超时、首字节超时、流空闲超时；
-- 取消传播（取消后尽快中止底层连接）；
-- 错误分类：网络、HTTP、协议、解析、空闲、取消；
-- 重试钩子/错误分类（重试策略由上层决定）。
-
-### 认证与签名
-
-- API Key 注入；
-- OAuth token 注入与刷新钩子；
-- AWS SigV4、GCP ADC/Service Account、Azure AD 等签名钩子的扩展点；
-- 凭据存储抽象（具体实现可后置）。
-
-### 宿主
-
-- 核心程序集**不引用 UnityEngine**；
-- 后台网络/解析 → 主线程事件分发；
-- 游戏暂停/切场景/退出/域重载时可取消、无泄漏；
-- 多 mod 共存。
-
-### 测试
-
-- 传输可注入 mock；
-- CI 无网、无 key；
-- 录制/回放、错误注入。
-
----
-
-## 三、不做什么
-
-- **不做 provider 协议解析**：OpenAI/Anthropic/Gemini 的 JSON 映射属于 `PiUnityAgent.Ai`（S4/S5）。
-- **不做 agent loop / 工具执行**：属于 `PiUnityAgent.Core`。
-- **不做 UI**：属于宿主/mod。
-- **不服务非 Unity 引擎**：Unreal/Godot/自研 C++ 等属于原版 pi / pi.net 或新 transport 的范围。
-- **不绑定 Unity 版本**：只提供宿主适配层，不要求升级引擎。
-- **不把“整包缓冲”叫流式**。
-
----
-
-## 三·五、为什么不是 .NET 8 后端组件
-
-.NET 8 后端已经有完整的 `HttpClient` / pi.net，不需要我们再造一层。这个组件的存在理由只有一个：**Unity 运行时的约束**。
-
-- Mono/IL2CPP、主线程、UWR 后端、游戏生命周期；
-- 不能升级 Unity；`netstandard2.1`；
-- 现有 mod 各写一套 UWR/裸 TCP 封装，需要统一。
-
-核心抽象仍不引用 `UnityEngine`（为了单测和可替换），但产品范围是 **Unity 运行时**；.NET 8 后端只是可选的消费方，不是本组件的目标环境。
-
-**三类宿主的选型**（同一套定义、不同组合）：
-
-| 宿主 | 必需 | 可选/不需要 |
-|---|---|---|
-| AI mod（游戏锁死环境） | `PiUnityAgent` 自有 Fetch 端口 + Host 适配器 + `Abstractions` + `Sse` + UWR + `Hosts.Unity` | — |
-| 原生 Unity AI 游戏（自研、可控制构建） | 可走 `PiUnityAgent` + Fetch 端口 + 适配器；也可**直接**用 `Abstractions` + `Sse` + 任一传输 | 可用我们的 UWR/HttpClient 适配器，也可注入自写 transport；`Hosts.Unity` 仅按需 |
-| .NET 8 后端 | pi.net + HttpClient | 不需要本组件；若与原生 Unity 客户端混用，`Abstractions` 可作统一端口 |
-
-> **B 方案（2026-11-07）**：`PiUnityAgent.Ai` 不直接依赖本组件的 `Abstractions`；它拥有自己的 Fetch 端口，由 `PiUnityAgent.Hosts.Unity` / `Ext` 适配器映射到 `IStreamingHttpTransport`。本组件的 `Abstractions` 仍是其对外共享契约，但不是 PiUnityAgent 的公共 API。接缝定义见 `PiUnityAgent/docs/07-通讯层集成契约.md`。
-
----
-
-## 四、硬约束
-
-- C# `netstandard2.1`；不使用 .NET 6/7/8/9 专有 API；
-- Unity 2021.2+（实际版本由游戏锁定）；
-- Mono 运行时优先，IL2CPP/AOT 需兼容；
-- 核心库零 `UnityEngine` 引用；
-- 许可证：MIT/Apache 类；
-- 尽量零/少第三方依赖；不引入原生插件（除非单独说明）。
-
----
-
-## 五、架构方向（待设计确认）
-
-```
-UnityLlmTransport.Abstractions   // 纯接口/DTO，无 Unity/HttpClient 依赖
-        ▲
-        │
-UnityLlmTransport.HttpClient     // .NET 8 / 桌面 Unity
-UnityLlmTransport.UnityWebRequest// Unity 前端（DownloadHandlerScript）
-UnityLlmTransport.RawTcp         // 兜底（可选）
-UnityLlmTransport.WebSocket      // 可选
-        ▲
-        │
-UnityLlmTransport.Hosts.Unity    // 主线程 dispatch、生命周期
-```
-
-B 方案（2026-11-07）：`PiUnityAgent.Ai` 的 provider adapter 只依赖 **PiUnityAgent 自有的 Fetch 端口**；`PiUnityAgent.Hosts.Unity / Ext` 的适配器负责 `FetchFunction ↔ IStreamingHttpTransport`；具体传输实现通过宿主注入。本组件不拥有 PiUnityAgent 的公共端口。
-
----
-
-## 六、消费方边界（本仓库不驱动消费方计划）
-
-| 项目 | 负责 |
+| | |
 |---|---|
-| **PiUnityAgent.Ai** | provider 协议、消息/事件模型、模型注册表、流式事件、**自有 Fetch 端口** |
-| **PiUnityAgent.Hosts.Unity / Ext** | 适配器：`FetchFunction` ↔ `IStreamingHttpTransport`；Unity 宿主 / 主线程 |
-| **UnityLlmTransport**（本项目） | 字节怎么出去、怎么回来、怎么取消、怎么认证、怎么送到 Unity 主线程；`Abstractions` 是本组件对外契约 |
-
-依赖方向（B 方案，2026-11-07）：
-
-```
-PiUnityAgent.Ai  →  自有 Fetch 端口（不依赖本组件）
-PiUnityAgent.Hosts.Unity/Ext  →  UnityLlmTransport.Abstractions（经适配器）
-UnityLlmTransport.*  →  不引用 PiUnityAgent 的任何类型
-```
-
-接缝唯一权威：`PiUnityAgent/docs/07-通讯层集成契约.md`。**本仓库不包含任何 PiUnityAgent 代码、集成任务或阶段门禁**；其 provider 联调、S4 验收与游戏内验收均在其仓库完成。本组件只维护通讯契约与消费方需求（`docs/03-pi通讯需求矩阵.md`）。
+| **版本** | `0.6.0`（见 `VERSION`） |
+| **状态** | Phase 0–6 全部完成，实测可用（四版本 Mono/IL2CPP 实机矩阵全过） |
+| **分发** | 源码搬运，消费方钉 commit（见 [docs/13](docs/13-源码搬运与集成指引.md)）；NuGet/UPM 打包后置 |
+| **许可** | MIT（`LICENSE`；vendor 归属见 `NOTICE`） |
+| **兼容** | Unity 2021.3.45f1 → 6000.6.8f1（四版本基线）；C# 9 / netstandard2.1 |
+| **首个消费方** | PiUnityAgent（经其自有 Fetch 端口 + 宿主适配器；不是唯一消费方） |
 
 ---
 
-## 七、目录（当前）
+## 一、愿景
+
+AI mod 作者和原生 AI 游戏开发者面对的同一个困境：**大模型通讯在 Unity 里没有现成的底座**。
+
+- .NET 后端那套 `HttpClient` + SSE 库在 Unity 里不可用或不可靠：Mono/IL2CPP 运行时、UWR 网络后端、主线程模型、游戏生命周期（暂停/切场景/退出/域重载）全都和服务器端假设不同；
+- 现有 mod 各写一套 UWR/裸 TCP 封装，质量参差、无法复用、无法单测；
+- 直接依赖某个 provider SDK（OpenAI/Anthropic…）会把协议、认证、传输焊死在一起，换 provider = 重写。
+
+**本项目的回答**：把"字节怎么出去、怎么回来、怎么取消、怎么认证、怎么送到 Unity 主线程"收进一层**可替换、可单测、零 UnityEngine 引用**的通讯抽象。上层（provider 协议、agent loop、UI）只依赖抽象端口，不依赖任何具体网络栈。
+
+> 一句话：不是"OpenAI SSE 客户端"，而是 **pi 通讯面的 Unity 宿主实现**。
+
+**三类宿主，同一套抽象**：
+
+| 宿主 | 用法 |
+|---|---|
+| AI mod（游戏锁死 Unity 版本） | PiUnityAgent 自有 Fetch 端口 + 宿主适配器 → 本组件传输栈 |
+| 原生 Unity AI 游戏 | 直接用 `Abstractions` + `Sse` + 任一传输实现，或同上走 PiUnityAgent |
+| .NET 8 后端 | 不需要本组件（已有 HttpClient/pi.net）；`Abstractions` 可作统一端口 |
+
+---
+
+## 二、效果（当前实测状态）
+
+全部为 2026-11-08 复跑结果（证据：`docs/spike/` + `docs/spike/evidence/`）：
+
+**dotnet 单测**（`dotnet test`，226 项全绿）：
+
+| 套件 | 覆盖 |
+|---|---|
+| Core（Abstractions/Sse/装饰器） | 53 — 端口契约、SSE 解析、超时/重试/中间件装饰器、Mock |
+| UWR（UnityWebRequest） | 47 — 流式下载、队列、错误分类、Abort/释放 |
+| HttpClient | 56 — 流式/取消/超时/显式代理/TLS/重定向 + 稳定性 soak |
+| Auth | 26 — ApiKey/OAuth 注入、401 刷新管线、Signer + soak |
+| WebSocket | 44 — 会话边界/超时/消息预算/并发 + 默认 16MiB 上限 + soak |
+
+**Unity 实机矩阵**（Mono + IL2CPP）：
+
+| 传输 | 2022.3.62f3c1（主基线） | 2021.3.45f1 | 6000.3.28f1 | 6000.6.8f1 |
+|---|---|---|---|---|
+| UWR 流式（U1–U11） | ✅ Mono + IL2CPP 15/15 | ✅ 同 | ✅ 同 | ✅ 同 |
+| HttpClient（H1–H9） | ✅ Mono 12/12 | ✅ 同 | ✅ 同 | ✅ 同 |
+| WebSocket（W1–W6） | ✅ Mono + IL2CPP 6/6 | ✅ 同 | ✅ 同 | ✅ 同 |
+
+含远程 `wss://` 实测（Phase 5 W5）。已知保留：UWR 的 accept-all 证书/客户端证书路径 dotnet-only（未进 Unity 实测）。
+
+**源码搬运验证**：干净 Unity 2022 空工程按 docs/13 手工搬运 78 个 `.cs`（8 目录）→ 编译 0 错误 → W1–W6 全过。
+
+**门禁**：Release 构建 0 warning / 0 error；`grep UnityEngine src/` 零命中；`grep PiUnityAgent src/` 零命中（不依赖消费方）。
+
+---
+
+## 三、架构
+
+```
+                    上层消费方（PiUnityAgent.Ai / 游戏代码 / mod）
+                              │  只依赖抽象端口
+                              ▼
+        ┌─────────────────────────────────────────────┐
+        │       UnityLlmTransport.Abstractions        │  纯接口/DTO/装饰器，零 UnityEngine
+        │  IStreamingHttpTransport · ITransportSession │
+        │  IWebSocketTransport · IWebSocketSession     │
+        │  TransportRequest/Options/Capabilities/...   │
+        └─────────────────────────────────────────────┘
+              ▲                    ▲                    ▲
+   ┌──────────┴─────┐   ┌──────────┴──────┐   ┌────────┴────────┐
+   │ UnityWebRequest │   │   HttpClient    │   │    WebSocket    │
+   │  (unity/ 运行时) │   │  (桌面/后端路径)  │   │ (ClientWebSocket)│
+   └─────────────────┘   └─────────────────┘   └─────────────────┘
+              ▲
+   ┌──────────┴──────────────────────────────────────┐
+   │            UnityLlmTransport.Hosts.Unity         │  协程 Host / 主线程 dispatch / 生命周期
+   └──────────────────────────────────────────────────┘
+```
+
+### 包一览
+
+| 包 | 位置 | 职责 | UnityEngine | 单测 |
+|---|---|---|---|---|
+| `Abstractions` | `src/` | 端口、DTO、能力声明、错误分类、装饰器、Mock | ✅ 零 | 53 |
+| `Sse` | `src/` | vendor `System.Net.ServerSentEvents`（MIT）的 netstandard2.0 解析器 | ✅ 零 | （含 Core） |
+| `HttpClient` | `src/` | `HttpClientTransport`/`Session`（ResponseHeadersRead 流式；显式代理/RequestFinalizer） | ✅ 零 | 56 |
+| `Auth` | `src/` | `ApiKeyMiddleware`、`OAuthTokenMiddleware`（401 刷新）、`IRequestSigner`+`SignerFinalizer` | ✅ 零 | 26 |
+| `WebSocket` | `src/` | `ClientWebSocketTransport`/`Session`、错误分类、16MiB 消息预算；手写接收枚举器（绕 IL2CPP corelib 缺陷） | ✅ 零 | 44 |
+| `UnityWebRequest.Core` | `src/` | UWR 纯桥接/队列/分类（netstandard2.1） | ✅ 零 | （含 UWR 套件） |
+| `UnityWebRequest` | `unity/` | UWR 适配层 Runtime（`DownloadHandlerScript` 流式）+ `link.xml`（IL2CPP 防剥离） | 使用 | 47（联合 Core 测） |
+| `Hosts.Unity` | `unity/` | `UnityCoroutineHost`：主线程 dispatch、`ShutdownToken` 生命周期 | 使用 | 实机 |
+
+### 装饰器栈（HTTP 路径）
+
+```
+TimeoutTransport → RetryTransport → MiddlewareTransport → ObserverTransport → FinalizerTransport → 具体传输
+   (首字节/空闲/响应上限)  (401刷新/重试钩子)   (ApiKey/OAuth 注入)      (观测)        (签名)
+```
+
+每层独立、可裁剪、可替换；重试策略由上层通过 `IRetryPolicy` 注入，传输层只做错误分类（`TransportErrorKind`：网络/HTTP/协议/解析/空闲/取消）。
+
+### 关键设计决策
+
+- **能力声明代替版本判断**：`TransportCapabilities`（`Http2`/`SystemProxy`/`RequestFinalizer`/…）声明各传输能做什么；显式代理等不支持的能力报 `Unsupported`，上层据此选择传输。
+- **流式是真流式**：`ITransportSession.Body` 是 `Stream`，边到边读；不把"整包缓冲"叫流式。
+- **B 方案接缝（2026-11-07 定）**：`PiUnityAgent.Ai` 不依赖本组件；它拥有自己的 Fetch 端口，`PiUnityAgent.Hosts.Unity/Ext` 的适配器映射到 `IStreamingHttpTransport`。接缝唯一权威：`PiUnityAgent/docs/07-通讯层集成契约.md`。
+
+---
+
+## 四、快速上手
+
+完整搬运步骤（复制范围/唯一 IsExternalInit/link.xml/asmdef/commit pin）见 **[docs/13-源码搬运与集成指引.md](docs/13-源码搬运与集成指引.md)**。最小接入（UWR + SSE）：
+
+```csharp
+var host = new GameObject("LlmHost").AddComponent<UnityCoroutineHost>();
+var transport = new UnityWebRequestTransport(host);
+var stack = new TimeoutTransport(
+    new RetryTransport(
+        new MiddlewareTransport(
+            new ObserverTransport(
+                new FinalizerTransport(transport, signers),
+                observer),
+            new IRequestMiddleware[] { new ApiKeyMiddleware("key") }),
+        new RetryOptions { MaxRetries = 2 },
+        null,
+        null));
+var session = await stack.OpenAsync(request, new TransportOptions(), host.ShutdownToken);
+var items = SseParser.Create(session.Body).EnumerateAsync();
+```
+
+WebSocket：`new ClientWebSocketTransport()`（消息默认上限 16MiB，`WebSocketOptions.MaxMessageBytes` 显式值优先）；HttpClient（桌面/后端）：`new HttpClientTransport()`。
+
+可执行用法示例：各 `tests/*Tests/` 下的测试即用法文档；Unity 侧参见 `unity/Phase*Harness/`。
+
+---
+
+## 五、开发 Agent 指路表
+
+**改代码前必读对应行；数值/契约以所指文档为准，不要凭记忆写。**
+
+| 你要做 | 先读 | 入口/命令 |
+|---|---|---|
+| 把源码搬运进 Unity 工程 | `docs/13`（复制范围、唯一 IsExternalInit、link.xml、asmdef 两形态） | `src/` + `unity/` 8 目录，pin commit |
+| 理解/修改架构与抽象 | `docs/10-架构设计.md` | `src/UnityLlmTransport.Abstractions/` |
+| 新增/修改传输实现 | `docs/10` + `docs/05`（能力声明规则） | 对应 `src/UnityLlmTransport.*`；能力矩阵在 `docs/05` §3 |
+| 动认证/签名 | `docs/14-可观测与脱敏指引.md`（凭据不落日志） | `src/UnityLlmTransport.Auth/` |
+| 加日志/观测 | `docs/14`（脱敏规则） | `ITransportObserver` + `ObserverTransport` |
+| 跑测试 | — | 见下方命令 |
+| 加测试 | 现有套件风格 + `tests/Phase3TestSupport/`（进程内 Kestrel） | 对应 `tests/*Tests/` |
+| Unity 实机验证 | `docs/SOP/Unity多版本通讯测试-SOP-2026-11-06.md` | `unity/Phase*Harness/` + `scripts/assemble-phase*-unity.sh` |
+| 查版本兼容/支持定义 | `docs/05-版本与兼容基线.md` | 四版本基线 + 兼容矩阵 |
+| 查需求边界 | `docs/00-核心需求.md` + `docs/03-pi通讯需求矩阵.md` | — |
+| 发起新开发阶段 | `docs/12-开发执行模型-spec-plan-subagent.md` | `docs/superpowers/specs|plans/`（brainstorming→writing-plans→subagent-driven-development 技能链） |
+| 查 pi 侧接缝 | `PiUnityAgent/docs/07-通讯层集成契约.md`（其仓库） | 本仓库不包含 PiUnityAgent 代码 |
+
+**测试命令**（在仓库根，用裸 `dotnet`）：
+
+```bash
+dotnet build UnityLlmTransport.sln -c Release          # 门禁：0 warning / 0 error
+dotnet test tests/UnityLlmTransport.Tests/             # 53
+dotnet test tests/UnityLlmTransport.UnityWebRequest.Tests/   # 47
+dotnet test tests/UnityLlmTransport.HttpClient.Tests/  # 56
+dotnet test tests/UnityLlmTransport.Auth.Tests/        # 26
+dotnet test tests/UnityLlmTransport.WebSocket.Tests/   # 44
+```
+
+注意：固定测试端口（5199/5201/5203/5211/5233/5234/5271/5273），同机不可并行跑套件。
+
+---
+
+## 六、硬约束（不可协商）
+
+1. **C# 9 / netstandard2.1**——不用 .NET 6+ 专有 API（`System.Threading.Lock`、`Task.WaitAsync` 等禁止）；
+2. **`src/` 零 UnityEngine 引用**——门禁 grep 验证；Unity 适配只进 `unity/`；
+3. **零/少第三方依赖**——SSE 为 vendor 源码（MIT，见 `NOTICE`）；不引入原生插件；
+4. **Unity 2021.3.45f1 最低**，四版本基线（2022.3.62f3c1 主基线 / 2021.3.45f1 / 6000.3.28f1 / 6000.6.8f1）；Mono 优先，IL2CPP 必须兼容（`link.xml`/`[Preserve]`）；
+5. **本体层必配单测**——改 `src/` 必跑五套件 + Release 0 warning 门禁；
+6. **WebGL 不支持**（M2 再议，方案 `.jslib` + fetch）；显式代理走 HttpClient，UWR 仅系统代理。
+
+---
+
+## 七、边界：不做什么
+
+- **不做 provider 协议解析**——OpenAI/Anthropic/Gemini 的 JSON 映射属于 `PiUnityAgent.Ai`；
+- **不做 agent loop / 工具执行**——属于 `PiUnityAgent.Core`；
+- **不做 UI**——属于宿主/mod；
+- **不服务非 Unity 引擎**——Unreal/Godot 等属于原版 pi / pi.net；
+- **不绑定 Unity 版本**——只提供适配层，不要求升级引擎；
+- **不引用 PiUnityAgent 的任何类型**——依赖方向单向：适配器在消费方仓库。
+
+---
+
+## 八、目录
 
 ```
 UnityLlmTransport/
-  README.md
-  docs/
-    00-核心需求.md
-    01-Unity通讯问题陈述.md
-    02-调研问题.md
-    03-pi通讯需求矩阵.md
-    04-Unity-AI-mod通讯问题清单.md
-    05-版本与兼容基线.md
-    06-参考项目复盘-Yaolao-WorldTalk-江湖有灵.md
-    07-参考项目阅读与评估方法.md
-    08-阅读笔记/
-    09-参考项目评估矩阵.md
-    10-架构设计.md
-    11-开发阶段划分.md
-    12-开发执行模型-spec-plan-subagent.md
-    superpowers/
-      specs/2026-11-06-phase0-spike-design.md
-      plans/2026-11-06-phase0-spike.md
-    SOP/
-      README.md
-      Unity多版本通讯测试-SOP-2026-11-06.md
-    spike/
-  scripts/
-    assemble-phase2-unity.sh
-    assemble-phase3-unity.sh
-    assemble-phase5-unity.sh
-  spikes/
-    SseTestServer/                   # UWR harness 的本地 SSE 服务（127.0.0.1:5199）
-    WsTestServer/                    # Phase 5 harness 的本地 ws echo 服务（ws://127.0.0.1:5200/ws/）
-    UnityUwrSpike/
-    Phase3TestServer/                # HttpClient harness 的测试服务（HTTP 5201 / HTTPS 5233 / 代理 5234）
-  src/
-    UnityLlmTransport.Abstractions/
-    UnityLlmTransport.Sse/
-    UnityLlmTransport.HttpClient/             # HttpClient 实现（桌面/后端；零 UnityEngine）
-    UnityLlmTransport.Auth/                   # ApiKey/OAuth 注入 + SignerFinalizer（Phase 4）
-    UnityLlmTransport.WebSocket/              # ClientWebSocket 传输/会话/分类/预算（Phase 5；零 UnityEngine）
-    UnityLlmTransport.UnityWebRequest.Core/   # 纯桥接/分类，netstandard2.1，零 UnityEngine
-  tests/
-    UnityLlmTransport.Tests/
-    UnityLlmTransport.UnityWebRequest.Tests/
-    UnityLlmTransport.HttpClient.Tests/       # 52 项：流式/取消/超时/代理/TLS/重定向/契约
-    UnityLlmTransport.Auth.Tests/             # 24 项：ApiKey/OAuth/Signer/401 管线
-    UnityLlmTransport.WebSocket.Tests/        # 34 项：会话边界/超时/TLS/能力矩阵（Phase 5）
-    Phase3TestSupport/                        # 进程内 Kestrel 测试服务（只进测试）
-  unity/
-    Phase2Harness/                   # Phase 2 Unity 侧 runner + build 脚本资产
-    Phase3Harness/                   # Phase 3 Unity Mono harness（H1–H9）
-    Phase5Harness/                   # Phase 5 Unity harness（W1–W6；Mono/IL2CPP 四版本矩阵）
-    UnityLlmTransport.UnityWebRequest/  # UWR 适配层 Runtime 源 + link.xml
-    UnityLlmTransport.Hosts.Unity/
+  LICENSE · NOTICE · VERSION
+  README.md / README.en.md
+  docs/                # 00-14 设计与指引 + SOP + spike 证据（见下方索引）
+  src/                 # 六个纯 .NET 包（零 UnityEngine）：Abstractions / Sse / HttpClient /
+                       #   Auth / WebSocket / UnityWebRequest.Core
+  unity/               # Unity 侧：UnityLlmTransport.UnityWebRequest(Runtime+link.xml) /
+                       #   Hosts.Unity / Phase2·3·5Harness
+  tests/               # 五个测试工程 + Phase3TestSupport(进程内 Kestrel)
+  scripts/             # assemble-phase2/3/5-unity.sh（装配进 Unity 工程）
+  spikes/              # 本地测试服务（SseTestServer 5199 / Phase3TestServer 5201·5233·5234 / WsTestServer）
 ```
 
-`src/` 与 `tests/` 已随 Phase 1/2/3/4/5 落地：`UnityLlmTransport.Abstractions`（端口/DTO/装饰器/Mock）、`UnityLlmTransport.Sse`（vendor SSE 解析器）、`UnityLlmTransport.HttpClient`（传输/会话/请求构建/handler 映射/错误分类，netstandard2.1 零 UnityEngine）、`UnityLlmTransport.Auth`（ApiKey/OAuth 注入 + SignerFinalizer，纯 .NET）、`UnityLlmTransport.WebSocket`（`ClientWebSocketTransport`/`Session` + 错误分类/消息预算，netstandard2.1 零 UnityEngine）、`UnityLlmTransport.UnityWebRequest.Core`（队列/流/分类/请求计划，纯逻辑）、`tests/UnityLlmTransport.Tests`、`tests/UnityLlmTransport.UnityWebRequest.Tests`、`tests/UnityLlmTransport.HttpClient.Tests`、`tests/UnityLlmTransport.Auth.Tests`（含 `Phase3TestSupport` 进程内测试服务）、`tests/UnityLlmTransport.WebSocket.Tests`（34 项）。`unity/` 为 Phase 2/3/5 的 Unity 侧源码（适配层 + 协程 Host + 三个 harness，经 `scripts/assemble-phase2-unity.sh` / `assemble-phase3-unity.sh` / `assemble-phase5-unity.sh` 装配进 Unity 工程）；Phase 2 的 2021.3/6.3/6.6 + 2022.3 主基线 Mono/IL2CPP 结果见 `docs/spike/phase2-results.md`，HttpClient 四版本 Mono + 共享修复的 UWR 短回归结果见 `docs/spike/phase3-results.md`，WebSocket 四版本 Mono/IL2CPP（8 组 W1–W6 全过）结果见 `docs/spike/phase5-results.md`；Auth 为纯 .NET，无 Unity 矩阵。
+---
+
+## 九、文档索引
+
+| 文档 | 内容 |
+|---|---|
+| `docs/00-核心需求.md` | 需求与范围（R 编号需求清单） |
+| `docs/01-Unity通讯问题陈述.md` | Unity 通讯问题的完整陈述 |
+| `docs/02-调研问题.md` / `docs/07` / `docs/08` / `docs/09` | 参考项目调研方法、阅读笔记、评估矩阵 |
+| `docs/03-pi通讯需求矩阵.md` | pi 对通讯层的需求矩阵（消费方需求权威） |
+| `docs/04-Unity-AI-mod通讯问题清单.md` | 现有 AI mod 的通讯问题清单 |
+| `docs/05-版本与兼容基线.md` | 四版本基线、兼容矩阵、支持定义 |
+| `docs/06-参考项目复盘-*.md` | Yaolao/WorldTalk/江湖有灵 复盘 |
+| `docs/10-架构设计.md` | 架构权威（分层/线程/生命周期/测试策略） |
+| `docs/11-开发阶段划分.md` | Phase 0–6 划分与状态 |
+| `docs/12-开发执行模型-spec-plan-subagent.md` | spec→plan→subagent 开发流程 |
+| `docs/13-源码搬运与集成指引.md` | **消费方搬运指南（复制范围/IsExternalInit/link.xml/pin）** |
+| `docs/14-可观测与脱敏指引.md` | `ITransportObserver` 观测点 + 脱敏规则 |
+| `docs/SOP/` | Unity 多版本实机测试 SOP |
+| `docs/spike/` | 各阶段实测结果 + `evidence/` 原始记录 |
 
 ---
 
-## 八、待定决策
+## 十、状态与后置项
 
-1. Unity 前端直连是首要形态；.NET 8 后端不作为本组件目标（已有 HttpClient/pi.net）——**已定**；
-2. 传输实现顺序：UWR（Phase 2 已过 2021.3/6.3/6.6 + 2022.3.62f3c1）→ HttpClient（Phase 3）→ WebSocket（Phase 5，四版本 Mono/IL2CPP 已过）；RawTcp 兜底与 WebGL（M2）后置——**已定**；
-3. WebGL 是否进 M1：**M2 再做**；
-4. 认证范围：API Key/OAuth 注入与 Signer Finalizer 的传输侧形状已在 Phase 4 落地；SigV4/ADC/Azure 算法由消费方实现——**已定**；
-5. 重试策略归属：传输层只做分类；策略在 provider adapter（PiUnityAgent S4）——**已定**；
-6. 独立 git 仓库：**已独立**；NuGet/UPM 包名与发布形态留 Phase 6；
-7. PiUnityAgent 集成：**B 方案**（PiUnityAgent 自有 Fetch 端口；适配器在 PiUnityAgent 侧维护）——**已定**（2026-11-07）。
+**已完成**：Phase 0（spike/IL2CPP 剥离实证）→ 1（核心抽象+SSE）→ 2（UWR）→ 3（HttpClient）→ 4（Auth）→ 5（WebSocket）→ 6（稳定性加固/搬运指引/发布验收）。详见 `docs/11`。
 
----
+**后置（等需求触发，未排期）**：
 
-## 九、下一步
-
-1. **Phase 2 follow-up · 2022.3.62f3c1 测试主基线**：已补测通过（Mono/IL2CPP U1–U11 15/15）；证据见 `docs/spike/phase2-results.md` 与 `docs/spike/evidence/phase2/`；游戏实际 f2 的最终游戏内验收由消费方执行，不在本仓库范围；
-2. **Phase 3 · HttpClient**：显式代理/TLS/桌面路径；消费方可将其作为 Fetch 端口的 .NET 实现；
-3. **Phase 4 · Auth/签名（仅传输侧）**：已完成（ApiKey/OAuth 注入、Signer Finalizer、401 refresh）；不包含消费方集成。
-4. **Phase 5 · WebSocket 核心（传输侧）**：已完成（`ClientWebSocketTransport`/`Session` + 34 项 dotnet 测试；四版本 Mono/IL2CPP 8 组 W1–W6 全过）；WS→SSE 回退 / 重连 / `WebSocketCached` 属消费方/后续，RawTcp 与 WebGL 后置；
-5. **Phase 6 · Hardening**：录制回放、打包、全矩阵、tag/版本发布——**待开工**。
+| 项 | 触发条件 |
+|---|---|
+| NuGet / UPM / zip 打包 | pi 验收后明确分发需求 |
+| 录制/回放 fixture | provider 协议稳定后 |
+| RawTcp 兜底 | 有传输不可用场景实证 |
+| WebGL（`.jslib` + fetch） | M2 立项 |
+| WS→SSE 回退 / 自动重连 / `WebSocketCached` | 消费方需求 |
+| telemetry 公共包 | 现用 `ITransportObserver` 够用 |
+| 消费方 E2E / 游戏内验收 | 在 PiUnityAgent 仓库执行 |
