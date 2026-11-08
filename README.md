@@ -1,6 +1,6 @@
 # UnityLlmTransport
 
-> **Unity 运行时的独立 LLM 通讯底座**——在 Unity + netstandard2.1 的硬约束下，承载 pi-ai / pi-agent-core 的全部通讯需求。
+> **Unity 运行时的独立 LLM/Agent 通讯底座**——在 Unity + netstandard2.1 的硬约束下，满足 agent 与 LLM 客户端的全部通讯需求（SSE / 流式 / WebSocket / 认证 / 取消 / 主线程分发）。当前首要服务对象是 PiUnityAgent，但任何 Unity 侧 LLM/Agent 客户端都可复用。
 
 [English](README.en.md) | 中文
 
@@ -11,7 +11,7 @@
 | **分发** | 源码搬运，消费方钉 commit（见 [docs/13](docs/13-源码搬运与集成指引.md)）；NuGet/UPM 打包后置 |
 | **许可** | MIT（`LICENSE`；vendor 归属见 `NOTICE`） |
 | **兼容** | Unity 2021.3.45f1 → 6000.6.8f1（四版本基线）；C# 9 / netstandard2.1 |
-| **首个消费方** | PiUnityAgent（经其自有 Fetch 端口 + 宿主适配器；不是唯一消费方） |
+| **消费方** | PiUnityAgent（当前首要，经其自有 Fetch 端口 + 宿主适配器）；其他 AI mod / 原生 AI 游戏同样可用 |
 
 ---
 
@@ -25,7 +25,7 @@ AI mod 作者和原生 AI 游戏开发者面对的同一个困境：**大模型�
 
 **本项目的回答**：把"字节怎么出去、怎么回来、怎么取消、怎么认证、怎么送到 Unity 主线程"收进一层**可替换、可单测、零 UnityEngine 引用**的通讯抽象。上层（provider 协议、agent loop、UI）只依赖抽象端口，不依赖任何具体网络栈。
 
-> 一句话：不是"OpenAI SSE 客户端"，而是 **pi 通讯面的 Unity 宿主实现**。
+> 一句话：不是某个 provider 的 SSE 客户端，而是 **Unity 侧 LLM/Agent 通讯面的宿主实现**——pi-ai / pi-agent-core 是当前对齐的通讯契约与首要消费方。
 
 **三类宿主，同一套抽象**：
 
@@ -70,7 +70,7 @@ AI mod 作者和原生 AI 游戏开发者面对的同一个困境：**大模型�
 ## 三、架构
 
 ```
-                    上层消费方（PiUnityAgent.Ai / 游戏代码 / mod）
+              上层消费方（Unity 侧 LLM/Agent 客户端：PiUnityAgent.Ai / 游戏代码 / mod…）
                               │  只依赖抽象端口
                               ▼
         ┌─────────────────────────────────────────────┐

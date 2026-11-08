@@ -1,6 +1,6 @@
 # UnityLlmTransport
 
-> **A standalone LLM communication foundation for the Unity runtime** — carrying the full communication needs of pi-ai / pi-agent-core under the hard constraints of Unity + netstandard2.1.
+> **A standalone LLM/Agent communication foundation for the Unity runtime** — covering the full communication needs of agents and LLM clients (SSE / streaming / WebSocket / auth / cancellation / main-thread dispatch) under the hard constraints of Unity + netstandard2.1. PiUnityAgent is the primary consumer today, but any Unity-side LLM/Agent client can reuse it.
 
 [中文](README.md) | English
 
@@ -11,7 +11,7 @@
 | **Distribution** | Source vendoring — consumers pin a commit (see [docs/13](docs/13-源码搬运与集成指引.md)); NuGet/UPM packaging deferred |
 | **License** | MIT (`LICENSE`; vendor attribution in `NOTICE`) |
 | **Compatibility** | Unity 2021.3.45f1 → 6000.6.8f1 (4-version baseline); C# 9 / netstandard2.1 |
-| **First consumer** | PiUnityAgent (via its own Fetch port + host adapter; not the only consumer) |
+| **Consumers** | PiUnityAgent (primary today, via its own Fetch port + host adapter); other AI mods / native AI games equally welcome |
 
 > Note: most linked docs are written in Chinese; type/command names are universal.
 
@@ -27,7 +27,7 @@ AI mod authors and native AI-game developers share the same problem: **there is 
 
 **This project's answer**: put "how bytes go out, how they come back, how cancellation works, how auth is attached, how results reach the Unity main thread" into one **replaceable, unit-testable, UnityEngine-free** communication abstraction. Upper layers (provider protocols, agent loop, UI) depend only on abstract ports — never on a concrete network stack.
 
-> In one sentence: not an "OpenAI SSE client", but a **Unity host implementation of pi's communication surface**.
+> In one sentence: not a single provider's SSE client, but a **host implementation of the Unity-side LLM/Agent communication surface** — pi-ai / pi-agent-core being the communication contract we align with and the primary consumer today.
 
 **Three host types, one abstraction set**:
 
@@ -72,7 +72,7 @@ Includes live remote `wss://` (Phase 5 W5). Known reservation: UWR accept-all-ce
 ## 3. Architecture
 
 ```
-              Consumers (PiUnityAgent.Ai / game code / mods)
+      Consumers (Unity-side LLM/Agent clients: PiUnityAgent.Ai / game code / mods…)
                               │  depends only on abstract ports
                               ▼
         ┌─────────────────────────────────────────────┐
